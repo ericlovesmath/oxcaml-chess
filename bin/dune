@@ -1,0 +1,4 @@
+(executable
+ (public_name oxcaml-chess)
+ (name main)
+ (libraries oxcaml_chess core))
