@@ -1,4 +1,4 @@
 open Core
 open Oxcaml_chess
 
-let () = Bitboard.empty |> Bitboard.mem ~rank:0 ~file:0 |> string_of_bool |> print_endline
+let () = Bitboard.count Bitboard.empty |> string_of_int |> print_endline

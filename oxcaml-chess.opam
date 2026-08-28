@@ -10,6 +10,9 @@ bug-reports: "https://github.com/ericlovesmath/oxcaml-chess/issues"
 depends: [
   "dune" {>= "3.19"}
   "ocaml" {>= "5.2"}
+  "stdlib_upstream_compatible"
+  "ocaml_intrinsics_kernel"
+  "core"
   "odoc" {with-doc}
 ]
 build: [

@@ -18,4 +18,8 @@
  (synopsis "A chess engine written in OxCaml")
  (description
   "A chess engine built on OxCaml's unboxed types and mode system")
- (depends (ocaml (>= 5.2))))
+ (depends
+  (ocaml (>= 5.2))
+  stdlib_upstream_compatible
+  ocaml_intrinsics_kernel
+  core))
