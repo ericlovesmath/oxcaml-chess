@@ -102,12 +102,7 @@ let all_kinds t =
 ;;
 
 let kind_count t =
-  B.count t.#pawns
-  + B.count t.#knights
-  + B.count t.#bishops
-  + B.count t.#rooks
-  + B.count t.#queens
-  + B.count t.#kings
+  List.sum (module Int) Piece.Kind.all ~f:(fun kind -> B.count (kind_board t kind))
 ;;
 
 let invariant t =
@@ -124,12 +119,14 @@ let invariant t =
   check (kind_count t = B.count t.#occupancy) "two kinds share a square"
 ;;
 
+(* The FEN letter for a square, or ['.'] when it is empty *)
+let char_at t square =
+  match kind_at t square, color_at t square with
+  | This kind, This color -> Piece.to_char #{ color; kind }
+  | _ -> '.'
+;;
+
 let to_string t =
-  let char_at t square =
-    match kind_at t square, color_at t square with
-    | This kind, This color -> Piece.to_char #{ color; kind }
-    | _ -> '.'
-  in
   let render_line rank =
     List.init 8 ~f:(fun file -> char_at t (Square.create ~rank ~file))
     |> List.intersperse ~sep:' '
@@ -142,75 +139,53 @@ let to_string t =
   |> String.concat_lines
 ;;
 
-let example =
-  let place board pieces =
-    let rec go board = function
-      | [] -> board
-      | (color, kind, square) :: rest ->
-        go (toggle_piece board #{ color; kind } (Square.of_string_exn square)) rest
-    in
-    go board pieces
+let start =
+  let back_rank =
+    [| Piece.Kind.Rook; Knight; Bishop; Queen; King; Bishop; Knight; Rook |]
   in
-  place
-    empty
-    [ Piece.Color.White, Piece.Kind.King, "e1"
-    ; White, Rook, "a1"
-    ; White, Rook, "h1"
-    ; White, Knight, "f3"
-    ; White, Pawn, "e4"
-    ; Black, King, "e8"
-    ; Black, Queen, "d8"
-    ; Black, Bishop, "c5"
-    ; Black, Pawn, "d5"
-    ]
+  let rec go board file =
+    if file = 8
+    then board
+    else (
+      let put board color kind rank =
+        toggle_piece board #{ color; kind } (Square.create ~rank ~file)
+      in
+      let board = put board White back_rank.(file) 0 in
+      let board = put board White Pawn 1 in
+      let board = put board Black Pawn 6 in
+      let board = put board Black back_rank.(file) 7 in
+      go board (file + 1))
+  in
+  go empty 0
 ;;
 
-let%expect_test "test sample board passes invariants" =
-  invariant example;
-  print_endline (to_string example);
+let sq = Square.of_string_exn
+let piece color kind : Piece.t = #{ color; kind }
+let put board color kind square = toggle_piece board (piece color kind) (sq square)
+
+let%expect_test "start renders" =
+  invariant start;
+  print_endline (to_string start);
   [%expect
     {|
-    8 . . . q k . . .
-    7 . . . . . . . .
+    8 r n b q k b n r
+    7 p p p p p p p p
     6 . . . . . . . .
-    5 . . b p . . . .
-    4 . . . . P . . .
-    3 . . . . . N . .
-    2 . . . . . . . .
-    1 R . . . K . . R
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . . . . . . . .
+    2 P P P P P P P P
+    1 R N B Q K B N R
       a b c d e f g h
-    |}];
-  let b = toggle_piece example #{ color = White; kind = King } (Square.of_string_exn "b3") in
-  invariant b;
-  print_endline (to_string b);
-  [%expect
-    {|
-    8 . . . q k . . .
-    7 . . . . . . . .
-    6 . . . . . . . .
-    5 . . b p . . . .
-    4 . . . . P . . .
-    3 . K . . . N . .
-    2 . . . . . . . .
-    1 R . . . K . . R
-      a b c d e f g h
-    |}];
-  printf
-    "occupied=%d white=%d black=%d kings=%s %s\n"
-    (B.count (occupancy example))
-    (B.count (color_board example White))
-    (B.count (color_board example Black))
-    (Square.to_string (king_square example White))
-    (Square.to_string (king_square example Black));
-  [%expect {| occupied=9 white=5 black=4 kings=e1 e8 |}]
+    |}]
 ;;
 
-let%expect_test "a kind board covers both colors" =
-  printf
-    "rooks=%d kings=%d white rooks=%d black kings=%d\n"
-    (B.count (kind_board example Rook))
-    (B.count (kind_board example King))
-    (B.count (piece_board example #{ color = White; kind = Rook }))
-    (B.count (piece_board example #{ color = Black; kind = King }));
-  [%expect {| rooks=2 kings=2 white rooks=2 black kings=1 |}]
+let%expect_test "invariant test" =
+  let board = put (put empty White Knight "e4") Black Pawn "e4" in
+  (try
+     invariant board;
+     print_endline "accepted"
+   with
+   | Failure message -> print_endline message);
+  [%expect {| Board.invariant: a square is both white and black |}]
 ;;

@@ -43,3 +43,6 @@ val move_piece : t -> Piece.t -> from:Square.t -> to_:Square.t -> t
 val invariant : t -> unit
 
 val to_string : t -> string
+
+(** The standard opening position *)
+val start : t
