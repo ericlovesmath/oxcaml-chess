@@ -1,3 +1,7 @@
-(test
- (name test_oxcaml_chess)
- (libraries oxcaml_chess))
+(library
+ (name oxcaml_chess_test)
+ (libraries oxcaml_chess)
+ (preprocess
+  (pps ppx_expect))
+ (inline_tests
+  (flags -source-tree-root .)))

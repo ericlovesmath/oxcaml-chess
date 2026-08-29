@@ -1,3 +1,7 @@
 (library
  (name oxcaml_chess)
- (libraries stdlib_upstream_compatible ocaml_intrinsics_kernel))
+ (libraries stdlib_upstream_compatible ocaml_intrinsics_kernel core)
+ (preprocess
+  (pps ppx_expect))
+ (inline_tests
+  (flags -source-tree-root .)))
