@@ -282,3 +282,70 @@ let%expect_test "revoke castling rights when the king/rook moves, or rook is cap
       w KQkq - 0 1        b KQq - 0 1
     |}]
 ;;
+
+let%expect_test "en passant capture" =
+  show
+    "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+    (Move.en_passant ~from:(sq "e5") ~to_:(sq "d6"));
+  show
+    "rnbqkbnr/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 3"
+    (Move.en_passant ~from:(sq "e4") ~to_:(sq "d3"));
+  [%expect
+    {|
+    e5d6
+      8 r n b q k b n r   8 r n b q k b n r
+      7 p p p . p p p p   7 p p p . p p p p
+      6 . . . . . . . .   6 . . . P . . . .
+      5 . . . p P . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 P P P P . P P P   2 P P P P . P P P
+      1 R N B Q K B N R   1 R N B Q K B N R
+        a b c d e f g h     a b c d e f g h
+      w KQkq d6 0 3       b KQkq - 0 3
+
+    e4d3
+      8 r n b q k b n r   8 r n b q k b n r
+      7 p p p p . p p p   7 p p p p . p p p
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . P p . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . p . . . .
+      2 P P P . P P P P   2 P P P . P P P P
+      1 R N B Q K B N R   1 R N B Q K B N R
+        a b c d e f g h     a b c d e f g h
+      b KQkq d3 0 3       w KQkq - 0 4
+    |}]
+;;
+
+let%expect_test "pawn promotion" =
+  let fen = "4k3/P7/8/8/8/8/8/4K3 w - - 0 1" in
+  show fen (Move.promote ~to_kind:Queen ~captured:Null ~from:(sq "a7") ~to_:(sq "a8"));
+  show fen (Move.promote ~to_kind:Knight ~captured:Null ~from:(sq "a7") ~to_:(sq "a8"));
+  [%expect
+    {|
+    a7a8q
+      8 . . . . k . . .   8 Q . . . k . . .
+      7 P . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 . . . . K . . .   1 . . . . K . . .
+        a b c d e f g h     a b c d e f g h
+      w - - 0 1           b - - 0 1
+
+    a7a8n
+      8 . . . . k . . .   8 N . . . k . . .
+      7 P . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 . . . . K . . .   1 . . . . K . . .
+        a b c d e f g h     a b c d e f g h
+      w - - 0 1           b - - 0 1
+    |}]
+;;

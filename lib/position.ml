@@ -118,23 +118,29 @@ let revoke_at castling square =
 ;;
 
 let make_move (t @ local) move =
-  (match Move.kind move with
-   | Normal | Double_push | Castle -> ()
-   | En_passant -> failwith "Position.make_move: en passant is not implemented yet");
-  (match Move.promotion move with
-   | Null -> ()
-   | This _ -> failwith "Position.make_move: promotion is not implemented yet");
   let us = t.to_move in
   let them = Piece.Color.flip us in
   let from = Move.from move in
   let to_ = Move.to_ move in
   let moved = Move.moved move in
+  let captured_square =
+    match Move.kind move with
+    | En_passant -> Square.create ~rank:(Square.rank from) ~file:(Square.file to_)
+    | Normal | Double_push | Castle -> to_
+  in
   let board =
     match Move.captured move with
     | Null -> t.board
-    | This kind -> Board.toggle_piece t.board #{ color = them; kind } to_
+    | This kind -> Board.toggle_piece t.board #{ color = them; kind } captured_square
   in
-  let board = Board.move_piece board #{ color = us; kind = moved } ~from ~to_ in
+  let board =
+    match Move.promotion move with
+    | Null -> Board.move_piece board #{ color = us; kind = moved } ~from ~to_
+    | This promoted ->
+      (* A promotion changes the piece's kind, so it cannot go through [move_piece] *)
+      Board.toggle_piece board #{ color = us; kind = moved } from
+      |> fun board -> Board.toggle_piece board #{ color = us; kind = promoted } to_
+  in
   let board =
     match Move.kind move with
     | Castle ->
