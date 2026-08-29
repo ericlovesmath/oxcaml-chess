@@ -42,6 +42,24 @@ module Kind = struct
     | King -> 'k'
   ;;
 
+  let to_index = function
+    | Pawn -> 0
+    | Knight -> 1
+    | Bishop -> 2
+    | Rook -> 3
+    | Queen -> 4
+    | King -> 5
+  ;;
+
+  let unsafe_of_index = function
+    | 0 -> Pawn
+    | 1 -> Knight
+    | 2 -> Bishop
+    | 3 -> Rook
+    | 4 -> Queen
+    | _ -> King
+  ;;
+
   let of_char c =
     let c = Char.lowercase c in
     List.find all ~f:(fun kind -> Char.equal (to_char kind) c)
