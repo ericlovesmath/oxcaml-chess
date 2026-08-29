@@ -22,5 +22,5 @@
   (ocaml (>= 5.2))
   stdlib_upstream_compatible
   ocaml_intrinsics_kernel
-  ppx_expect
+  ppx_jane
   core))
