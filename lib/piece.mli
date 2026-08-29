@@ -1,4 +1,4 @@
-(** Unboxed coloured piece *)
+(** Unboxed colored piece *)
 
 module Color : sig
   type t =
