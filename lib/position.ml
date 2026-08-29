@@ -102,6 +102,51 @@ let start =
     ~fullmove_number:1
 ;;
 
+(* The square a double push passes over *)
+let skipped_square ~from ~to_ =
+  Square.create ~rank:((Square.rank from + Square.rank to_) / 2) ~file:(Square.file from)
+;;
+
+let make_move (t @ local) move =
+  (match Move.kind move with
+   | Normal | Double_push -> ()
+   | En_passant | Castle ->
+     failwith "Position.make_move: castling and en passant are not implemented yet");
+  (match Move.promotion move with
+   | Null -> ()
+   | This _ -> failwith "Position.make_move: promotion is not implemented yet");
+  let us = t.to_move in
+  let them = Piece.Color.flip us in
+  let from = Move.from move in
+  let to_ = Move.to_ move in
+  let moved = Move.moved move in
+  let board =
+    match Move.captured move with
+    | Null -> t.board
+    | This kind -> Board.toggle_piece t.board #{ color = them; kind } to_
+  in
+  let board = Board.move_piece board #{ color = us; kind = moved } ~from ~to_ in
+  exclave_
+  { board
+  ; to_move = them
+  ; castling = t.castling
+  ; en_passant =
+      (match Move.kind move with
+       | Double_push -> This (skipped_square ~from ~to_)
+       | Normal | En_passant | Castle -> Null)
+  ; halfmove_clock =
+      (if Piece.Kind.equal moved Pawn || Move.is_capture move
+       then 0
+       else t.halfmove_clock + 1)
+  ; fullmove_number =
+      (t.fullmove_number
+       +
+       match us with
+       | White -> 0
+       | Black -> 1)
+  }
+;;
+
 let color_name (color : Piece.Color.t) =
   match color with
   | White -> "White"

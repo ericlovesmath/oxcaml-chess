@@ -1,8 +1,8 @@
 (** Complete game state *)
 
-(* NOTE:If unboxing [Position.t] is significantly more efficient, we will do so, but right
-   now I'm running into too many OxCaml issues that I don't care to fix. I think just
-   using [local] allocations for everything will be more than enough. *)
+(* NOTE: If unboxing [Position.t] is significantly more efficient, we will do so, but
+   right now I'm running into too many OxCaml issues that I don't care to fix. I think
+   just using [local] allocations for everything will be more than enough. *)
 
 type t
 
@@ -31,5 +31,8 @@ val fullmove_number : t @ local -> int [@@zero_alloc strict]
 
 (** Validates legal game state. NOTE: No checks for checked positions, incomplete *)
 val invariant : t @ local -> unit
+
+(** Applies [move], no checking invariants *)
+val make_move : t @ local -> Move.t -> t @ local 
 
 val to_string : t @ local -> string

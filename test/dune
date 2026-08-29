@@ -1,7 +1,7 @@
 (library
  (name oxcaml_chess_test)
- (libraries oxcaml_chess)
+ (libraries oxcaml_chess core expect_test_helpers_core)
  (preprocess
-  (pps ppx_expect))
+  (pps ppx_jane))
  (inline_tests
   (flags -source-tree-root .)))
