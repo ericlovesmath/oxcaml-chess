@@ -107,11 +107,20 @@ let skipped_square ~from ~to_ =
   Square.create ~rank:((Square.rank from + Square.rank to_) / 2) ~file:(Square.file from)
 ;;
 
+(* A move touching a corner (as origin or destination) removed castling rights there *)
+let revoke_at castling square =
+  match Square.rank square, Square.file square with
+  | 0, 0 -> Castling.remove castling White Queenside
+  | 0, 7 -> Castling.remove castling White Kingside
+  | 7, 0 -> Castling.remove castling Black Queenside
+  | 7, 7 -> Castling.remove castling Black Kingside
+  | _, _ -> castling
+;;
+
 let make_move (t @ local) move =
   (match Move.kind move with
-   | Normal | Double_push -> ()
-   | En_passant | Castle ->
-     failwith "Position.make_move: castling and en passant are not implemented yet");
+   | Normal | Double_push | Castle -> ()
+   | En_passant -> failwith "Position.make_move: en passant is not implemented yet");
   (match Move.promotion move with
    | Null -> ()
    | This _ -> failwith "Position.make_move: promotion is not implemented yet");
@@ -126,10 +135,29 @@ let make_move (t @ local) move =
     | This kind -> Board.toggle_piece t.board #{ color = them; kind } to_
   in
   let board = Board.move_piece board #{ color = us; kind = moved } ~from ~to_ in
+  let board =
+    match Move.kind move with
+    | Castle ->
+      (* The rook's origin and destination for a castle *)
+      let #(rook_from, rook_to) =
+        let rank = Square.rank to_ in
+        if Square.file to_ = 6
+        then #(Square.create ~rank ~file:7, Square.create ~rank ~file:5)
+        else #(Square.create ~rank ~file:0, Square.create ~rank ~file:3)
+      in
+      Board.move_piece board #{ color = us; kind = Rook } ~from:rook_from ~to_:rook_to
+    | Normal | Double_push | En_passant -> board
+  in
   exclave_
   { board
   ; to_move = them
-  ; castling = t.castling
+  ; castling =
+      (let castling =
+         match moved with
+         | King -> Castling.remove_color t.castling us
+         | Pawn | Knight | Bishop | Rook | Queen -> t.castling
+       in
+       revoke_at (revoke_at castling from) to_)
   ; en_passant =
       (match Move.kind move with
        | Double_push -> This (skipped_square ~from ~to_)

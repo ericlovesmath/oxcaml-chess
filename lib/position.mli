@@ -33,6 +33,6 @@ val fullmove_number : t @ local -> int [@@zero_alloc strict]
 val invariant : t @ local -> unit
 
 (** Applies [move], no checking invariants *)
-val make_move : t @ local -> Move.t -> t @ local 
+val make_move : t @ local -> Move.t -> t @ local
 
 val to_string : t @ local -> string

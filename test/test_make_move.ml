@@ -176,3 +176,109 @@ let%expect_test "a double push sets the en passant square" =
       w KQkq d6 0 3       b KQkq - 1 3
     |}]
 ;;
+
+let%expect_test "castling moves the rook" =
+  let white = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1" in
+  let black = "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1" in
+  show white (Move.castle ~color:White ~side:Kingside);
+  show white (Move.castle ~color:White ~side:Queenside);
+  show black (Move.castle ~color:Black ~side:Kingside);
+  show black (Move.castle ~color:Black ~side:Queenside);
+  [%expect
+    {|
+    e1g1
+      8 r . . . k . . r   8 r . . . k . . r
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 R . . . . R K .
+        a b c d e f g h     a b c d e f g h
+      w KQkq - 0 1        b kq - 1 1
+
+    e1c1
+      8 r . . . k . . r   8 r . . . k . . r
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 . . K R . . . R
+        a b c d e f g h     a b c d e f g h
+      w KQkq - 0 1        b kq - 1 1
+
+    e8g8
+      8 r . . . k . . r   8 r . . . . r k .
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 R . . . K . . R
+        a b c d e f g h     a b c d e f g h
+      b KQkq - 0 1        w KQ - 1 2
+
+    e8c8
+      8 r . . . k . . r   8 . . k r . . . r
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 R . . . K . . R
+        a b c d e f g h     a b c d e f g h
+      b KQkq - 0 1        w KQ - 1 2
+    |}]
+;;
+
+let%expect_test "revoke castling rights when the king/rook moves, or rook is captured" =
+  let fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1" in
+  show fen (Move.quiet ~moved:King ~from:(sq "e1") ~to_:(sq "e2"));
+  show fen (Move.quiet ~moved:Rook ~from:(sq "a1") ~to_:(sq "b1"));
+  show
+    "r3k2r/7Q/8/8/8/8/8/R3K2R w KQkq - 0 1"
+    (Move.capture ~moved:Queen ~captured:Rook ~from:(sq "h7") ~to_:(sq "h8"));
+  [%expect
+    {|
+    e1e2
+      8 r . . . k . . r   8 r . . . k . . r
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . K . . .
+      1 R . . . K . . R   1 R . . . . . . R
+        a b c d e f g h     a b c d e f g h
+      w KQkq - 0 1        b kq - 1 1
+
+    a1b1
+      8 r . . . k . . r   8 r . . . k . . r
+      7 . . . . . . . .   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 . R . . K . . R
+        a b c d e f g h     a b c d e f g h
+      w KQkq - 0 1        b Kkq - 1 1
+
+    h7h8
+      8 r . . . k . . r   8 r . . . k . . Q
+      7 . . . . . . . Q   7 . . . . . . . .
+      6 . . . . . . . .   6 . . . . . . . .
+      5 . . . . . . . .   5 . . . . . . . .
+      4 . . . . . . . .   4 . . . . . . . .
+      3 . . . . . . . .   3 . . . . . . . .
+      2 . . . . . . . .   2 . . . . . . . .
+      1 R . . . K . . R   1 R . . . K . . R
+        a b c d e f g h     a b c d e f g h
+      w KQkq - 0 1        b KQq - 0 1
+    |}]
+;;
