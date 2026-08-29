@@ -28,6 +28,7 @@ let is_empty t = I.equal t #0L
 let count t = I.to_int (U.count_set_bits t)
 let lowest_square t = Square.unsafe_of_int (I.to_int (U.count_trailing_zeros t))
 let highest_square t = Square.unsafe_of_int (63 - I.to_int (U.count_leading_zeros t))
+let rank_mask rank = I.shift_left #0xFFL (rank * 8)
 
 let to_string t =
   let render_line rank =

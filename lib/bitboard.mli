@@ -52,6 +52,10 @@ val lowest_square : t -> Square.t
 val highest_square : t -> Square.t
 [@@zero_alloc strict]
 
+(** Every square on rank [r]. NOTE: No bounds check, assumes [0 <= r < 8] *)
+val rank_mask : int -> t
+[@@zero_alloc strict]
+
 (** Renders the board as eight ranks, rank 8 first, ['x'] for a member square and ['.']
     for an empty one, with rank and file legends. There is no trailing newline, so
     [print_endline (to_string t)] prints exactly nine lines. Debugging aid: cold path,

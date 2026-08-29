@@ -4,7 +4,7 @@ module Color : sig
   type t =
     | White
     | Black
-  [@@deriving enumerate, equal]
+  [@@deriving enumerate, equal, string]
 
   val flip : t -> t [@@zero_alloc strict]
 end

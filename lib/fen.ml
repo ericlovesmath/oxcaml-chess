@@ -1,9 +1,8 @@
 open Core
 
-let fail fmt =
-  Printf.ksprintf (fun message -> failwith ("Fen.to_board_exn: " ^ message)) fmt
-;;
+let fail fmt = Printf.ksprintf (fun message -> failwith ("Fen: " ^ message)) fmt
 
+(* TODO: I understand that I can't unbox an [or_null], maybe I need a refactor... *)
 let square_char board square =
   match Board.kind_at board square, Board.color_at board square with
   | This kind, This color -> Some (Piece.to_char #{ color; kind })
@@ -20,7 +19,7 @@ let rank_to_string board rank =
 ;;
 
 let of_board board =
-  List.init 8 ~f:(fun i -> rank_to_string board (7 - i)) |> String.concat ~sep:"/"
+  List.init 8 ~f:(rank_to_string board) |> List.rev |> String.concat ~sep:"/"
 ;;
 
 let color_kind_of_char c =
@@ -60,6 +59,60 @@ let to_board_exn s =
   let board = place Board.empty placements in
   Board.invariant board;
   board
+;;
+
+let of_position pos =
+  String.concat
+    ~sep:" "
+    [ of_board (Position.board pos)
+    ; Piece.Color.to_string (Position.to_move pos)
+    ; Castling.to_string (Position.castling pos)
+    ; (match Position.en_passant pos with
+       | This square -> Square.to_string square
+       | Null -> "-")
+    ; Int.to_string (Position.halfmove_clock pos)
+    ; Int.to_string (Position.fullmove_number pos)
+    ]
+;;
+
+let castling_of_string s =
+  match Castling.of_string s with
+  | Some castling -> castling
+  | None -> fail "bad castling rights %S" s
+;;
+
+let en_passant_of_string = function
+  | "-" -> Null
+  | s ->
+    let square =
+      match Square.of_string s with
+      | Some square -> square
+      | None -> fail "bad en passant square %S" s
+    in
+    This square
+;;
+
+let int_of_string name s =
+  match Int.of_string_opt s with
+  | Some n -> n
+  | None -> fail "bad %s %S" name s
+;;
+
+let to_position s =
+  try
+    match String.split s ~on:' ' with
+    | [ placement; side; rights; target; halfmove; fullmove ] ->
+      Ok
+        (Position.create_exn
+           ~board:(to_board_exn placement)
+           ~to_move:(Piece.Color.of_string side)
+           ~castling:(castling_of_string rights)
+           ~en_passant:(en_passant_of_string target)
+           ~halfmove_clock:(int_of_string "halfmove clock" halfmove)
+           ~fullmove_number:(int_of_string "fullmove number" fullmove))
+    | fields -> fail "expected six fields, got %d" (List.length fields)
+  with
+  | Failure message -> Error message
 ;;
 
 let startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
@@ -137,12 +190,54 @@ let%expect_test "malformed FEN tests" =
       | Failure msg -> print_endline msg);
   [%expect
     {|
-    Fen.to_board_exn: expected eight ranks, got 7
-    Fen.to_board_exn: expected eight ranks, got 9
-    Fen.to_board_exn: rank 7 has 7 files
-    Fen.to_board_exn: rank 8 has 9 files
-    Fen.to_board_exn: a run of empty squares cannot be 0
-    Fen.to_board_exn: 'X' is not a piece letter
-    Fen.to_board_exn: expected eight ranks, got 1
+    Fen: expected eight ranks, got 7
+    Fen: expected eight ranks, got 9
+    Fen: rank 7 has 7 files
+    Fen: rank 8 has 9 files
+    Fen: a run of empty squares cannot be 0
+    Fen: 'X' is not a piece letter
+    Fen: expected eight ranks, got 1
+    |}]
+;;
+
+let%expect_test "FEN of starting position" =
+  print_endline (of_position Position.start);
+  printf
+    "matches start: %b\n"
+    (String.equal (of_position Position.start) (startpos ^ " w KQkq - 0 1"));
+  [%expect
+    {|
+    rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+    matches start: true
+    |}]
+;;
+
+let%expect_test "invalid records" =
+  List.iter
+    [ startpos ^ " w KQkq - 0"
+    ; startpos ^ " w KQkq - 0 1 x"
+    ; startpos ^ " x KQkq - 0 1"
+    ; startpos ^ " w KQkqx - 0 1"
+    ; startpos ^ " w KQkq e9 0 1"
+    ; startpos ^ " w KQkq - x 1"
+    ; startpos ^ " w KQkq - 0 x"
+    ; "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP w KQkq - 0 1"
+    ; "4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1"
+    ]
+    ~f:(fun fen ->
+      match to_position fen with
+      | Ok position -> printf "ACCEPTED %s\n" (of_position position)
+      | Error message -> print_endline message);
+  [%expect
+    {|
+    Fen: expected six fields, got 5
+    Fen: expected six fields, got 7
+    Piece.Color: invalid color x
+    Fen: bad castling rights "KQkqx"
+    Fen: bad en passant square "e9"
+    Fen: bad halfmove clock "x"
+    Fen: bad fullmove number "x"
+    Fen: expected eight ranks, got 7
+    Position: castling right K needs R on h1
     |}]
 ;;

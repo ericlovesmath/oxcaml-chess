@@ -2,6 +2,6 @@
  (name oxcaml_chess)
  (libraries stdlib_upstream_compatible ocaml_intrinsics_kernel core)
  (preprocess
-  (pps ppx_jane))
+  (pps ppx_jane ppx_with))
  (inline_tests
   (flags -source-tree-root .)))

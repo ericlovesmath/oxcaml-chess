@@ -10,6 +10,17 @@ module Color = struct
     | White -> Black
     | Black -> White
   ;;
+
+  let to_string = function
+    | White -> "w"
+    | Black -> "b"
+  ;;
+
+  let of_string = function
+    | "w" -> White
+    | "b" -> Black
+    | s -> failwith ("Piece.Color: invalid color " ^ s)
+  ;;
 end
 
 module Kind = struct
