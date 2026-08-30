@@ -43,7 +43,20 @@ module Direction = struct
     | South_east
     | South_west
   [@@deriving enumerate, to_string]
+
+  let delta = function
+    | North -> 8
+    | South -> -8
+    | East -> 1
+    | West -> -1
+    | North_east -> 9
+    | North_west -> 7
+    | South_east -> -7
+    | South_west -> -9
+  ;;
 end
+
+(* TODO: Maybe just have [shift] use [delta] *)
 
 let shift t (direction : Direction.t) =
   let non_file_a = I.lognot (file_mask 0) in
@@ -284,5 +297,30 @@ let%expect_test "stepping off an edge drops members instead of wrapping" =
     2 . . . . . . . .
     1 . . . . . . . .
       a b c d e f g h
+    |}]
+;;
+
+let%expect_test "delta is the step that shift takes" =
+  let checked direction =
+    let agrees square =
+      let stepped = shift (of_square square) direction in
+      is_empty stepped
+      || (lowest_square stepped :> int) = (square :> int) + Direction.delta direction
+    in
+    (if List.for_all Square.all ~f:agrees then "PASS" else "FAIL")
+    ^ " "
+    ^ Direction.to_string direction
+  in
+  List.map Direction.all ~f:checked |> String.concat_lines |> print_string;
+  [%expect
+    {|
+    PASS North
+    PASS South
+    PASS East
+    PASS West
+    PASS North_east
+    PASS North_west
+    PASS South_east
+    PASS South_west
     |}]
 ;;

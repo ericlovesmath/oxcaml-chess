@@ -65,7 +65,10 @@ val san : t -> string
 
 (** The listed moves drawn on one board, visualized
 
-    - Mover's letter on its origin
+    - Mover's FEN letter on its origin, cased by [color]
     - [*] on its destination
-    - [x] on a pawn taken en passant *)
-val diagram : t list -> string
+    - [x] on a pawn taken en passant
+
+    NOTE: [color] is a parameter because a [t] does not record it; the moves are assumed
+    to be one side's. *)
+val diagram : color:Piece.Color.t -> t list -> string

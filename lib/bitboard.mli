@@ -75,6 +75,10 @@ module Direction : sig
     | South_east
     | South_west
   [@@deriving enumerate]
+
+  (** The square-index change [shift] makes in this direction *)
+  val delta : t -> int
+  [@@zero_alloc strict]
 end
 
 (** Takes one step in given direction *)

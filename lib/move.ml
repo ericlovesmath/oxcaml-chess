@@ -143,7 +143,7 @@ let san move =
       promotion
 ;;
 
-let diagram moves =
+let diagram ~color moves =
   let en_passant_victim move =
     Square.create ~rank:(Square.rank (from move)) ~file:(Square.file (to_ move))
   in
@@ -153,7 +153,7 @@ let diagram moves =
       equal_kind (kind move) En_passant && Square.equal (en_passant_victim move) square
     in
     match List.find moves ~f:(fun move -> Square.equal (from move) square) with
-    | Some move -> Char.uppercase (Piece.Kind.to_char (moved move))
+    | Some move -> Piece.to_char #{ color; kind = moved move }
     | None when List.exists moves ~f:is_to -> '*'
     | None when List.exists moves ~f:is_victim -> 'x'
     | None -> '.'
@@ -200,6 +200,7 @@ let%expect_test "every constructor tested" =
 let%expect_test "castle derives both squares" =
   print_endline
     (diagram
+       ~color:White
        [ castle ~color:White ~side:Kingside
        ; castle ~color:White ~side:Queenside
        ; castle ~color:Black ~side:Kingside
@@ -222,6 +223,7 @@ let%expect_test "castle derives both squares" =
 let%expect_test "double_push derives the destination" =
   print_endline
     (diagram
+       ~color:White
        [ double_push ~from:(sq "a2")
        ; double_push ~from:(sq "e2")
        ; double_push ~from:(sq "h2")
@@ -243,8 +245,8 @@ let%expect_test "double_push derives the destination" =
 ;;
 
 let%expect_test "en passant test" =
-  print_endline (diagram [ en_passant ~from:(sq "e5") ~to_:(sq "d6") ]);
-  print_endline (diagram [ en_passant ~from:(sq "d4") ~to_:(sq "e3") ]);
+  print_endline (diagram ~color:White [ en_passant ~from:(sq "e5") ~to_:(sq "d6") ]);
+  print_endline (diagram ~color:Black [ en_passant ~from:(sq "d4") ~to_:(sq "e3") ]);
   [%expect
     {|
     8 . . . . . . . .
@@ -261,7 +263,7 @@ let%expect_test "en passant test" =
     7 . . . . . . . .
     6 . . . . . . . .
     5 . . . . . . . .
-    4 . . . P x . . .
+    4 . . . p x . . .
     3 . . . . * . . .
     2 . . . . . . . .
     1 . . . . . . . .
