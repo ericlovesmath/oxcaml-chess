@@ -56,6 +56,27 @@ val highest_square : t -> Square.t
 val rank_mask : int -> t
 [@@zero_alloc strict]
 
+(** Every square on file [f]. NOTE: No bounds check, assumes [0 <= f < 8] *)
+val file_mask : int -> t
+[@@zero_alloc strict]
+
+module Direction : sig
+  type t =
+    | North
+    | South
+    | East
+    | West
+    | North_east
+    | North_west
+    | South_east
+    | South_west
+  [@@deriving enumerate]
+end
+
+(** Takes one step in given direction *)
+val shift : t -> Direction.t -> t
+[@@zero_alloc strict]
+
 (** Renders the board as eight ranks, rank 8 first, ['x'] for a member square and ['.']
     for an empty one, with rank and file legends. There is no trailing newline, so
     [print_endline (to_string t)] prints exactly nine lines. Debugging aid: cold path,

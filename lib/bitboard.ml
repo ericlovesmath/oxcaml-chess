@@ -29,6 +29,34 @@ let count t = I.to_int (U.count_set_bits t)
 let lowest_square t = Square.unsafe_of_int (I.to_int (U.count_trailing_zeros t))
 let highest_square t = Square.unsafe_of_int (63 - I.to_int (U.count_leading_zeros t))
 let rank_mask rank = I.shift_left #0xFFL (rank * 8)
+let file_mask file = I.shift_left #0x0101010101010101L file
+
+module Direction = struct
+  type t =
+    | North
+    | South
+    | East
+    | West
+    | North_east
+    | North_west
+    | South_east
+    | South_west
+  [@@deriving enumerate, to_string]
+end
+
+let shift t (direction : Direction.t) =
+  let non_file_a = I.lognot (file_mask 0) in
+  let non_file_h = I.lognot (file_mask 7) in
+  match direction with
+  | North -> I.shift_left t 8
+  | South -> I.shift_right_logical t 8
+  | East -> I.logand (I.shift_left t 1) non_file_a
+  | West -> I.logand (I.shift_right_logical t 1) non_file_h
+  | North_east -> I.logand (I.shift_left t 9) non_file_a
+  | North_west -> I.logand (I.shift_left t 7) non_file_h
+  | South_east -> I.logand (I.shift_right_logical t 7) non_file_a
+  | South_west -> I.logand (I.shift_right_logical t 9) non_file_h
+;;
 
 let to_string t =
   let render_line rank =
@@ -104,6 +132,154 @@ let%expect_test "add, remove and mem" =
     5 . . . x . . . .
     4 . . . . . . . .
     3 . . . . . . . .
+    2 . . . . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+    |}]
+;;
+
+let%expect_test "file_mask check" =
+  print_endline (to_string (file_mask 0 lor file_mask 7));
+  [%expect
+    {|
+    8 x . . . . . . x
+    7 x . . . . . . x
+    6 x . . . . . . x
+    5 x . . . . . . x
+    4 x . . . . . . x
+    3 x . . . . . . x
+    2 x . . . . . . x
+    1 x . . . . . . x
+      a b c d e f g h
+    |}]
+;;
+
+let%expect_test "each direction steps exactly one square" =
+  let d4 = of_square (Square.of_string_exn "d4") in
+  List.iter Direction.all ~f:(fun direction ->
+    printf
+      "shift d4 %-10s = %s\n"
+      (Direction.to_string direction)
+      (Square.to_string (lowest_square (shift d4 direction))));
+  [%expect
+    {|
+    shift d4 North      = d5
+    shift d4 South      = d3
+    shift d4 East       = e4
+    shift d4 West       = c4
+    shift d4 North_east = e5
+    shift d4 North_west = c5
+    shift d4 South_east = e3
+    shift d4 South_west = c3
+    |}]
+;;
+
+(* The corners are the members that must vanish rather than reappear on the far side. *)
+let%expect_test "stepping off an edge drops members instead of wrapping" =
+  let probe =
+    of_squares (List.map ~f:Square.of_string_exn [ "a1"; "h1"; "a8"; "h8"; "d4" ])
+  in
+  print_endline (to_string probe);
+  List.iter Direction.all ~f:(fun dir ->
+    [ Direction.to_string dir; to_string (shift probe dir) ]
+    |> String.concat ~sep:"\n"
+    |> print_endline);
+  [%expect
+    {|
+    8 x . . . . . . x
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . x . . . .
+    3 . . . . . . . .
+    2 . . . . . . . .
+    1 x . . . . . . x
+      a b c d e f g h
+
+    North
+    8 . . . . . . . .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . x . . . .
+    4 . . . . . . . .
+    3 . . . . . . . .
+    2 x . . . . . . x
+    1 . . . . . . . .
+      a b c d e f g h
+
+    South
+    8 . . . . . . . .
+    7 x . . . . . . x
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . . . x . . . .
+    2 . . . . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    East
+    8 . x . . . . . .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . x . . .
+    3 . . . . . . . .
+    2 . . . . . . . .
+    1 . x . . . . . .
+      a b c d e f g h
+
+    West
+    8 . . . . . . x .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . x . . . . .
+    3 . . . . . . . .
+    2 . . . . . . . .
+    1 . . . . . . x .
+      a b c d e f g h
+
+    North_east
+    8 . . . . . . . .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . . x . . .
+    4 . . . . . . . .
+    3 . . . . . . . .
+    2 . x . . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    North_west
+    8 . . . . . . . .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . x . . . . .
+    4 . . . . . . . .
+    3 . . . . . . . .
+    2 . . . . . . x .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    South_east
+    8 . . . . . . . .
+    7 . x . . . . . .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . . . . x . . .
+    2 . . . . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    South_west
+    8 . . . . . . . .
+    7 . . . . . . x .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . . x . . . . .
     2 . . . . . . . .
     1 . . . . . . . .
       a b c d e f g h
