@@ -36,7 +36,7 @@ let pawn (color : Piece.Color.t) pawns =
   | Black -> B.(shift pawns South_east lor shift pawns South_west)
 ;;
 
-(* TODO: Use ray boards / magic boards / PEXT instead of naive loop *)
+(* TODO: Use ray tables / magic boards / PEXT instead of naive loop. Probably ray tables. *)
 
 (** Steps outward until the board ends or a piece stops the ray *)
 let ray ~occupancy ~direction from =
