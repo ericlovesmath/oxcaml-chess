@@ -143,11 +143,6 @@ let san move =
       promotion
 ;;
 
-(* The listed moves drawn on one board
-
-   - Mover's letter on its origin
-   - [*] on its destination
-   - [x] on a pawn taken en passant *)
 let diagram moves =
   let en_passant_victim move =
     Square.create ~rank:(Square.rank (from move)) ~file:(Square.file (to_ move))

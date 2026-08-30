@@ -59,3 +59,13 @@ val equal : t -> t -> bool [@@zero_alloc strict]
 
 (** UCI syntax long algebraic string output, e.g. ["e2e4"], ["a7a8q"] *)
 val to_string : t -> string
+
+(** Standard algebraic notation, e.g. ["Nf3"], ["exd5"], ["O-O"] *)
+val san : t -> string
+
+(** The listed moves drawn on one board, visualized
+
+    - Mover's letter on its origin
+    - [*] on its destination
+    - [x] on a pawn taken en passant *)
+val diagram : t list -> string

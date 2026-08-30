@@ -29,6 +29,7 @@ let count t = I.to_int (U.count_set_bits t)
 let lowest_square t = Square.unsafe_of_int (I.to_int (U.count_trailing_zeros t))
 let highest_square t = Square.unsafe_of_int (63 - I.to_int (U.count_leading_zeros t))
 let rank_mask rank = I.shift_left #0xFFL (rank * 8)
+let remove_lowest t = I.logand t (I.sub t #1L)
 let file_mask file = I.shift_left #0x0101010101010101L file
 
 module Direction = struct

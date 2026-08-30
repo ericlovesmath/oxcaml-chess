@@ -52,6 +52,10 @@ val lowest_square : t -> Square.t
 val highest_square : t -> Square.t
 [@@zero_alloc strict]
 
+(** Clears the member nearest to a1, leaves [empty] alone *)
+val remove_lowest : t -> t
+[@@zero_alloc strict]
+
 (** Every square on rank [r]. NOTE: No bounds check, assumes [0 <= r < 8] *)
 val rank_mask : int -> t
 [@@zero_alloc strict]
