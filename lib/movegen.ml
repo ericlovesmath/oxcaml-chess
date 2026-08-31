@@ -154,6 +154,38 @@ let emit_pawns ~board ~to_move ~en_passant moves =
   emit_pawn ~board ~becomes:Passing ~delta:west_step passed_west moves
 ;;
 
+let emit_castle ~board ~to_move ~castling ~side moves =
+  let rank =
+    match (to_move : Piece.Color.t) with
+    | White -> 0
+    | Black -> 7
+  in
+  let file f = Square.create ~rank ~file:f in
+  let b = file 1
+  and c = file 2
+  and d = file 3
+  and e = file 4
+  and f = file 5
+  and g = file 6 in
+  let #(between, transit, final) =
+    match (side : Castling.Side.t) with
+    | Kingside -> #(B.(of_square f lor of_square g), f, g)
+    | Queenside -> #(B.(of_square b lor of_square c lor of_square d), d, c)
+  in
+  (* TODO: So unergonomic for performance... maybe I can just force inline? *)
+  let unattacked ~board a b c =
+    let by = Piece.Color.flip to_move in
+    (not (Attacks.is_attacked board a ~by))
+    && (not (Attacks.is_attacked board b ~by))
+    && not (Attacks.is_attacked board c ~by)
+  in
+  if Castling.mem castling to_move side
+     && B.is_empty B.(between land Board.occupancy board)
+     && unattacked ~board e transit final
+  then Movelist.push moves (Move.castle ~color:to_move ~side)
+  else moves
+;;
+
 let generate position moves =
   let board = Position.board position in
   let to_move = Position.to_move position in
@@ -165,6 +197,9 @@ let generate position moves =
   let moves = emit_kind ~board ~to_move ~kind:Rook moves in
   let moves = emit_kind ~board ~to_move ~kind:Queen moves in
   let moves = emit_kind ~board ~to_move ~kind:King moves in
+  let castling = Position.castling position in
+  let moves = emit_castle ~board ~to_move ~castling ~side:Kingside moves in
+  let moves = emit_castle ~board ~to_move ~castling ~side:Queenside moves in
   moves
 ;;
 
@@ -339,5 +374,95 @@ let%expect_test "black promotion" =
       1 . . . . K . . .   1 . . * . . . . .
         a b c d e f g h     a b c d e f g h
     9 moves: Kd7 Kd8 Ke7 Kf7 Kf8 c1=B c1=N c1=Q c1=R
+    |}]
+;;
+
+let%expect_test "castling when the back rank is clear" =
+  show "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+  [%expect
+    {|
+      8 r . . . k . . r   8 * . . . . . . *
+      7 . . . . . . . .   7 * . . . . . . *
+      6 . . . . . . . .   6 * . . . . . . *
+      5 . . . . . . . .   5 * . . . . . . *
+      4 . . . . . . . .   4 * . . . . . . *
+      3 . . . . . . . .   3 * . . . . . . *
+      2 . . . . . . . .   2 * . . * * * . *
+      1 R . . . K . . R   1 R * * * K * * R
+        a b c d e f g h     a b c d e f g h
+    26 moves: Kd1 Kd2 Ke2 Kf1 Kf2 O-O O-O-O Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rd1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
+    |}]
+;;
+
+let%expect_test "castling blocked by a piece and check" =
+  show "r3k2r/8/8/8/8/8/8/R2QK2R w KQkq - 0 1";
+  show "r3k2r/8/8/8/8/8/4r3/R3K2R w KQkq - 0 1";
+  [%expect
+    {|
+      8 r . . . k . . r   8 * . . * . . . *
+      7 . . . . . . . .   7 * . . * . . . *
+      6 . . . . . . . .   6 * . . * . . . *
+      5 . . . . . . . .   5 * . . * . . . *
+      4 . . . . . . . .   4 * . . * . . * *
+      3 . . . . . . . .   3 * * . * . * . *
+      2 . . . . . . . .   2 * . * * * * . *
+      1 R . . Q K . . R   1 R * * Q K * * R
+        a b c d e f g h     a b c d e f g h
+    39 moves: Kd2 Ke2 Kf1 Kf2 O-O Qa4 Qb1 Qb3 Qc1 Qc2 Qd2 Qd3 Qd4 Qd5 Qd6 Qd7 Qd8 Qe2 Qf3 Qg4 Qh5 Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
+      8 r . . . k . . r   8 * . . . . . . *
+      7 . . . . . . . .   7 * . . . . . . *
+      6 . . . . . . . .   6 * . . . . . . *
+      5 . . . . . . . .   5 * . . . . . . *
+      4 . . . . . . . .   4 * . . . . . . *
+      3 . . . . . . . .   3 * . . . . . . *
+      2 . . . . r . . .   2 * . . * * * . *
+      1 R . . . K . . R   1 R * * * K * * R
+        a b c d e f g h     a b c d e f g h
+    24 moves: Kd1 Kd2 Kf1 Kf2 Kxe2 Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rd1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
+    |}]
+;;
+
+let%expect_test "rook crossing attacked square" =
+  show "r3k2r/8/8/8/8/8/5r2/R3K2R w KQkq - 0 1";
+  show "r3k2r/8/8/8/8/8/1r6/R3K2R w KQkq - 0 1";
+  [%expect
+    {|
+      8 r . . . k . . r   8 * . . . . . . *
+      7 . . . . . . . .   7 * . . . . . . *
+      6 . . . . . . . .   6 * . . . . . . *
+      5 . . . . . . . .   5 * . . . . . . *
+      4 . . . . . . . .   4 * . . . . . . *
+      3 . . . . . . . .   3 * . . . . . . *
+      2 . . . . . r . .   2 * . . * * * . *
+      1 R . . . K . . R   1 R * * * K * * R
+        a b c d e f g h     a b c d e f g h
+    25 moves: Kd1 Kd2 Ke2 Kf1 Kxf2 O-O-O Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rd1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
+      8 r . . . k . . r   8 * . . . . . . *
+      7 . . . . . . . .   7 * . . . . . . *
+      6 . . . . . . . .   6 * . . . . . . *
+      5 . . . . . . . .   5 * . . . . . . *
+      4 . . . . . . . .   4 * . . . . . . *
+      3 . . . . . . . .   3 * . . . . . . *
+      2 . r . . . . . .   2 * . . * * * . *
+      1 R . . . K . . R   1 R * * * K * * R
+        a b c d e f g h     a b c d e f g h
+    26 moves: Kd1 Kd2 Ke2 Kf1 Kf2 O-O O-O-O Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rd1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
+    |}]
+;;
+
+let%expect_test "position with given up castling rights" =
+  show "r3k2r/8/8/8/8/8/8/R3K2R w kq - 0 1";
+  [%expect
+    {|
+      8 r . . . k . . r   8 * . . . . . . *
+      7 . . . . . . . .   7 * . . . . . . *
+      6 . . . . . . . .   6 * . . . . . . *
+      5 . . . . . . . .   5 * . . . . . . *
+      4 . . . . . . . .   4 * . . . . . . *
+      3 . . . . . . . .   3 * . . . . . . *
+      2 . . . . . . . .   2 * . . * * * . *
+      1 R . . . K . . R   1 R * * * K * * R
+        a b c d e f g h     a b c d e f g h
+    24 moves: Kd1 Kd2 Ke2 Kf1 Kf2 Ra2 Ra3 Ra4 Ra5 Ra6 Ra7 Rb1 Rc1 Rd1 Rf1 Rg1 Rh2 Rh3 Rh4 Rh5 Rh6 Rh7 Rxa8 Rxh8
     |}]
 ;;
