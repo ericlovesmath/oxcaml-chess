@@ -33,19 +33,16 @@ let init () =
   }
 ;;
 
+let rec any_legal (position @ local) moves =
+  match Movegen.Movelist.pop moves with
+  | #(Null, _) -> false
+  | #(This move, rest) ->
+    (not (Position.mover_in_check (Position.make_move position move)))
+    || any_legal position rest
+;;
+
 let has_legal_move (position @ local) =
-  let moves = Movegen.generate position (Movegen.Movelist.create ()) in
-  let n = Movegen.Movelist.length moves in
-  (* TODO: Is there some way to use a [let rec local_] with a closure efficiently? *)
-  let mutable i = 0 in
-  let mutable found = false in
-  while (not found) && i < n do
-    let move = Movegen.Movelist.get moves i in
-    let after = Position.make_move position move in
-    if not (Position.mover_in_check after) then found <- true;
-    i <- i + 1
-  done;
-  found
+  any_legal position (Movegen.generate position (Movegen.Movelist.create ()))
 ;;
 
 let record counts move (after @ local) =
@@ -66,13 +63,16 @@ let record counts move (after @ local) =
 
 (* A move is legal exactly when it does not leave its own king attacked *)
 let rec walk (position @ local) depth counts =
-  let moves = Movegen.generate position (Movegen.Movelist.create ()) in
-  for i = 0 to Movegen.Movelist.length moves - 1 do
-    let move = Movegen.Movelist.get moves i in
+  visit position (Movegen.generate position (Movegen.Movelist.create ())) depth counts
+
+and visit (position @ local) moves depth counts =
+  match Movegen.Movelist.pop moves with
+  | #(Null, _) -> ()
+  | #(This move, rest) ->
     let after = Position.make_move position move in
     if not (Position.mover_in_check after)
-    then if depth = 1 then record counts move after else walk after (depth - 1) counts
-  done
+    then if depth = 1 then record counts move after else walk after (depth - 1) counts;
+    visit position rest depth counts
 ;;
 
 let cell width text = String.pad_left text ~len:width

@@ -11,6 +11,7 @@ let max_moves = 255
 module Movelist = struct
   type t =
     #{ moves : Move.t array
+     ; start : int
      ; length : int
      }
 
@@ -20,19 +21,24 @@ module Movelist = struct
   ;;
 
   let create () : t @ unique =
-    #{ moves = Array.create ~len:max_moves dummy_move; length = 0 }
+    #{ moves = Array.create ~len:max_moves dummy_move; start = 0; length = 0 }
   ;;
 
-  let clear (t : t @ unique) : t @ unique = #{ t with length = 0 }
+  let clear (t : t @ unique) : t @ unique = #{ t with start = 0; length = 0 }
 
   let push (t : t @ unique) (move : Move.t) : t @ unique =
-    let #{ moves; length } = t in
+    let #{ moves; start; length } = t in
     Array.set (borrow_ moves) length move;
-    #{ moves; length = length + 1 }
+    #{ moves; start; length = length + 1 }
   ;;
 
-  let length t = t.#length
-  let get t i = t.#moves.(i)
+  let length t = t.#length - t.#start
+
+  let pop t =
+    if t.#start >= t.#length
+    then #(Null, t)
+    else #(This t.#moves.(t.#start), #{ t with start = t.#start + 1 })
+  ;;
 end
 
 (** NOTE: One loop over the destinations rather than separate quiet and capture passes *)
@@ -203,17 +209,19 @@ let generate position moves =
   moves
 ;;
 
-let find (position @ local) token =
-  let moves = generate position (Movelist.create ()) in
-  let n = Movelist.length moves in
-  let mutable i = 0 in
-  let mutable found = Null in
-  while Or_null.is_null found && i < n do
-    let move = Movelist.get moves i in
-    if String.equal (Move.to_string move) token then found <- This move;
-    i <- i + 1
-  done;
-  found
+let rec scan moves token =
+  match Movelist.pop moves with
+  | #(Null, _) -> Null
+  | #(This move, rest) ->
+    if String.equal (Move.to_string move) token then This move else scan rest token
+;;
+
+let find (position @ local) token = scan (generate position (Movelist.create ())) token
+
+let rec to_list moves acc =
+  match Movelist.pop moves with
+  | #(Null, _) -> List.rev acc
+  | #(This move, rest) -> to_list rest (move :: acc)
 ;;
 
 (** Visualization of [fen] position and available moves *)
@@ -224,7 +232,7 @@ let show fen =
     | Error message -> failwith message
   in
   let moves = generate position (Movelist.create ()) in
-  let moves = List.init (Movelist.length moves) ~f:(Movelist.get moves) in
+  let moves = to_list moves [] in
   List.iter2_exn
     (String.split_lines (Board.to_string (Position.board position)))
     (String.split_lines (Move.diagram ~color:(Position.to_move position) moves))

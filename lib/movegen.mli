@@ -2,17 +2,17 @@
 
 (** A move buffer and how much of it is filled *)
 module Movelist : sig
-  type t : value & value
+  type t : value & value & value
 
   (** Allocates the array, caller is expected to hold one and reuse it. *)
   val create : unit -> t @ unique
 
-  (** Aliased [t], so this is after movegen is over *)
+  (** How many moves are left to visit. Aliased [t], so this is after movegen is over *)
   val length : t -> int
   [@@zero_alloc strict]
 
-  (** Aliased [t], so this is after movegen is over. NOTE: no bounds check *)
-  val get : t -> int -> Move.t
+  (** The next move and the moves after it, [Null] once exhausted *)
+  val pop : t -> #(Move.t or_null * t)
   [@@zero_alloc strict]
 end
 
