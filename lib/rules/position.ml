@@ -1,4 +1,5 @@
 open Core
+open Chess_primitives
 
 type t =
   { board : Board.t

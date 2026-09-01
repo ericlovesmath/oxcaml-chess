@@ -1,4 +1,6 @@
 open Core
+open Chess_primitives
+open Chess_rules
 module Movelist = Movegen.Movelist
 
 (* TODO: Quiescence Search *)

@@ -1,9 +1,7 @@
+; [ppx_expect] has a bug with (include_subdirs unqualified) that Jane Street
+; hasn't merged fixed for yet: https://github.com/janestreet/ppx_expect/pull/66
+; Once this is fixed, I would rather use that
+
 (library
  (name oxcaml_chess)
- (libraries stdlib_upstream_compatible ocaml_intrinsics_kernel core)
- (preprocess
-  (pps ppx_jane ppx_with))
- (inline_tests
-  (flags -source-tree-root .)))
-
- (include_subdirs unqualified)
+ (libraries chess_primitives chess_rules chess_protocols chess_engine))

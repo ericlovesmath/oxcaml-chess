@@ -1,4 +1,5 @@
 open Core
+open Chess_primitives
 module B = Bitboard
 module D = Bitboard.Direction
 

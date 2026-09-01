@@ -1,4 +1,6 @@
 open Core
+open Chess_primitives
+open Chess_rules
 
 let startpos_fen = Fen.of_position Position.start
 

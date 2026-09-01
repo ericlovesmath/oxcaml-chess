@@ -1,0 +1,7 @@
+(library
+ (name chess_protocols)
+ (libraries chess_primitives chess_rules core)
+ (preprocess
+  (pps ppx_jane))
+ (inline_tests
+  (flags -source-tree-root .)))

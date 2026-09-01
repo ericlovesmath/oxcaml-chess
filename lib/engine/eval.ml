@@ -1,4 +1,6 @@
 open Core
+open Chess_primitives
+open Chess_rules
 module B = Bitboard
 
 [@@@ocamlformat "disable"]

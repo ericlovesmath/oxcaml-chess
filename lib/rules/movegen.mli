@@ -1,5 +1,7 @@
 (** Pseudolegal move generation *)
 
+open Chess_primitives
+
 (** A move buffer and how much of it is filled *)
 module Movelist : sig
   type t : value & value & value

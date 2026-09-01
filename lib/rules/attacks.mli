@@ -1,5 +1,7 @@
 (** The squares a piece attacks *)
 
+open Chess_primitives
+
 val knight : Square.t -> Bitboard.t [@@zero_alloc strict]
 val king : Square.t -> Bitboard.t [@@zero_alloc strict]
 

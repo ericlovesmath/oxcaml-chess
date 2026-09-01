@@ -1,5 +1,7 @@
 (** Forsyth-Edwards Notation *)
 
+open Chess_primitives
+
 (** FEN of [Board.t] *)
 val of_board : Board.t -> string
 

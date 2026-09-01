@@ -1,0 +1,7 @@
+(library
+ (name chess_primitives)
+ (libraries core ocaml_intrinsics_kernel stdlib_upstream_compatible)
+ (preprocess
+  (pps ppx_jane))
+ (inline_tests
+  (flags -source-tree-root .)))

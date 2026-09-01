@@ -1,5 +1,7 @@
 (** Complete game state *)
 
+open Chess_primitives
+
 (* NOTE: If unboxing [Position.t] is significantly more efficient, we will do so, but
    right now I'm running into too many OxCaml issues that I don't care to fix. I think
    just using [local] allocations for everything will be more than enough. *)

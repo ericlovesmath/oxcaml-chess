@@ -1,4 +1,5 @@
 open Core
+open Chess_primitives
 
 let fail fmt = Printf.ksprintf (fun message -> failwith ("Fen: " ^ message)) fmt
 
