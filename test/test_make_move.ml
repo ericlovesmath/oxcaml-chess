@@ -2,13 +2,12 @@ open Core
 open Oxcaml_chess
 
 let sq = Square.of_string_exn
-let startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+let startpos = Fen.of_position Position.start
 
-let position_exn fen =
-  match Fen.to_position fen with
-  | Ok position -> position
-  | Error message -> failwith message
-;;
+(* Shared by more than one test below; the rest of the positions are written inline, next
+   to the board they produce. *)
+let castling = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
+let en_passant = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
 
 (* All tests are also allocation tests! *)
 let apply before move = exclave_
@@ -22,7 +21,7 @@ let show fen move =
     String.split_lines (Board.to_string board)
     @ [ String.split fen ~on:' ' |> List.tl_exn |> String.concat ~sep:" " ]
   in
-  let before = position_exn fen in
+  let before = Fen.to_position_exn fen in
   let after = apply before move in
   Position.invariant after;
   printf "%s\n" (Move.to_string move);
@@ -146,9 +145,7 @@ let%expect_test "halfmove clock" =
 
 let%expect_test "a double push sets the en passant square" =
   show startpos (Move.double_push ~from:(sq "d2"));
-  show
-    "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
-    (Move.quiet ~moved:Knight ~from:(sq "g1") ~to_:(sq "f3"));
+  show en_passant (Move.quiet ~moved:Knight ~from:(sq "g1") ~to_:(sq "f3"));
   [%expect
     {|
     d2d4
@@ -178,10 +175,9 @@ let%expect_test "a double push sets the en passant square" =
 ;;
 
 let%expect_test "castling moves the rook" =
-  let white = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1" in
   let black = "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1" in
-  show white (Move.castle ~color:White ~side:Kingside);
-  show white (Move.castle ~color:White ~side:Queenside);
+  show castling (Move.castle ~color:White ~side:Kingside);
+  show castling (Move.castle ~color:White ~side:Queenside);
   show black (Move.castle ~color:Black ~side:Kingside);
   show black (Move.castle ~color:Black ~side:Queenside);
   [%expect
@@ -237,9 +233,8 @@ let%expect_test "castling moves the rook" =
 ;;
 
 let%expect_test "revoke castling rights when the king/rook moves, or rook is captured" =
-  let fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1" in
-  show fen (Move.quiet ~moved:King ~from:(sq "e1") ~to_:(sq "e2"));
-  show fen (Move.quiet ~moved:Rook ~from:(sq "a1") ~to_:(sq "b1"));
+  show castling (Move.quiet ~moved:King ~from:(sq "e1") ~to_:(sq "e2"));
+  show castling (Move.quiet ~moved:Rook ~from:(sq "a1") ~to_:(sq "b1"));
   show
     "r3k2r/7Q/8/8/8/8/8/R3K2R w KQkq - 0 1"
     (Move.capture ~moved:Queen ~captured:Rook ~from:(sq "h7") ~to_:(sq "h8"));
@@ -284,9 +279,7 @@ let%expect_test "revoke castling rights when the king/rook moves, or rook is cap
 ;;
 
 let%expect_test "en passant capture" =
-  show
-    "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
-    (Move.en_passant ~from:(sq "e5") ~to_:(sq "d6"));
+  show en_passant (Move.en_passant ~from:(sq "e5") ~to_:(sq "d6"));
   show
     "rnbqkbnr/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 3"
     (Move.en_passant ~from:(sq "e4") ~to_:(sq "d3"));

@@ -10,3 +10,6 @@ val of_position : Position.t @ local -> string
 
 (** TODO: [Position.t] is boxed so it can be in a [result], may need to update *)
 val to_position : string -> (Position.t, string) result
+
+(** [to_position], raising [Failure] with the parse error instead *)
+val to_position_exn : string -> Position.t
