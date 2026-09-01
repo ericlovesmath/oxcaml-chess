@@ -203,6 +203,19 @@ let generate position moves =
   moves
 ;;
 
+let find (position @ local) token =
+  let moves = generate position (Movelist.create ()) in
+  let n = Movelist.length moves in
+  let mutable i = 0 in
+  let mutable found = Null in
+  while Or_null.is_null found && i < n do
+    let move = Movelist.get moves i in
+    if String.equal (Move.to_string move) token then found <- This move;
+    i <- i + 1
+  done;
+  found
+;;
+
 (** Visualization of [fen] position and available moves *)
 let show fen =
   let position =

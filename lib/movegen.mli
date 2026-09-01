@@ -20,3 +20,6 @@ end
     to apply the move then reject it with [Attacks.in_check], for example *)
 val generate : Position.t @ local -> Movelist.t @ unique -> Movelist.t @ unique
 [@@zero_alloc strict]
+
+(** Find move associated with UCI move at given position *)
+val find : Position.t @ local -> string -> Move.t or_null

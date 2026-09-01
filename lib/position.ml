@@ -85,6 +85,9 @@ let invariant (t @ local) =
   check_castling board t.castling
 ;;
 
+let in_check (t @ local) = Attacks.in_check t.board t.to_move
+let mover_in_check (t @ local) = Attacks.in_check t.board (Piece.Color.flip t.to_move)
+
 (* TODO: Expose an unchecked version? *)
 let create_exn ~board ~to_move ~castling ~en_passant ~halfmove_clock ~fullmove_number =
   let t = { board; to_move; castling; en_passant; halfmove_clock; fullmove_number } in

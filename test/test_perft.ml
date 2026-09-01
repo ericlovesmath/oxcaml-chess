@@ -42,8 +42,7 @@ let has_legal_move (position @ local) =
   while (not found) && i < n do
     let move = Movegen.Movelist.get moves i in
     let after = Position.make_move position move in
-    if not (Attacks.in_check (Position.board after) (Position.to_move position))
-    then found <- true;
+    if not (Position.mover_in_check after) then found <- true;
     i <- i + 1
   done;
   found
@@ -59,7 +58,7 @@ let record counts move (after @ local) =
   (match Move.promotion move with
    | Null -> ()
    | This _ -> counts.promotions <- counts.promotions + 1);
-  if Attacks.in_check (Position.board after) (Position.to_move after)
+  if Position.in_check after
   then (
     counts.checks <- counts.checks + 1;
     if not (has_legal_move after) then counts.checkmates <- counts.checkmates + 1)
@@ -71,7 +70,7 @@ let rec walk (position @ local) depth counts =
   for i = 0 to Movegen.Movelist.length moves - 1 do
     let move = Movegen.Movelist.get moves i in
     let after = Position.make_move position move in
-    if not (Attacks.in_check (Position.board after) (Position.to_move position))
+    if not (Position.mover_in_check after)
     then if depth = 1 then record counts move after else walk after (depth - 1) counts
   done
 ;;

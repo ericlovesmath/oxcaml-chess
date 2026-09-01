@@ -37,6 +37,13 @@ val fullmove_number : t @ local -> int [@@zero_alloc strict]
     test positions have not been audited against it. *)
 val invariant : t @ local -> unit
 
+(** Is side to move in check? *)
+val in_check : t @ local -> bool [@@zero_alloc strict]
+
+(** Did the side that just moved leave its own king attacked? (Illegal move) *)
+val mover_in_check : t @ local -> bool
+[@@zero_alloc strict]
+
 (** Applies [move], no checking invariants *)
 val make_move : t @ local -> Move.t -> t @ local
 
