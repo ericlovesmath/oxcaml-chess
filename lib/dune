@@ -5,3 +5,5 @@
   (pps ppx_jane ppx_with))
  (inline_tests
   (flags -source-tree-root .)))
+
+ (include_subdirs unqualified)
