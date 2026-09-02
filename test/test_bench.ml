@@ -27,13 +27,12 @@ let measure (name, fen, depth) =
 ;;
 
 let%expect_test "search work per position" =
-  [ "startpos", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 4
-  ; "kiwipete", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4
-  ; ( "midgame"
-    , "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-    , 4 )
-  ; "endgame", "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5
-  ]
+  Test_positions.
+    [ "startpos", startpos, 4
+    ; "kiwipete", kiwipete, 4
+    ; "midgame", midgame, 4
+    ; "endgame", endgame, 5
+    ]
   |> List.map ~f:measure
   |> Expectable.print;
   [%expect

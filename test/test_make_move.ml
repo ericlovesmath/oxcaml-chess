@@ -6,7 +6,7 @@ let startpos = Fen.of_position Position.start
 
 (* Shared by more than one test below; the rest of the positions are written inline, next
    to the board they produce. *)
-let castling = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
+let castling = Test_positions.castling_back_rank
 let en_passant = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
 
 (* All tests are also allocation tests! *)

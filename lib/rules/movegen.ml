@@ -264,7 +264,7 @@ let%expect_test "a knight in the corner and the king next to it" =
 ;;
 
 let%expect_test "own pieces are not targets" =
-  show "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  show Test_positions.startpos;
   [%expect
     {|
       8 r n b q k b n r   8 . . . . . . . .
@@ -400,7 +400,7 @@ let%expect_test "black promotion" =
 ;;
 
 let%expect_test "castling when the back rank is clear" =
-  show "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+  show Test_positions.castling_back_rank;
   [%expect
     {|
       8 r . . . k . . r   8 * . . . . . . *

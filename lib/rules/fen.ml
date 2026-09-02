@@ -122,9 +122,9 @@ let to_position_exn s =
   | Error message -> failwith message
 ;;
 
-let startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-let kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R"
-let endgame = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8"
+let startpos = Test_positions.(placement startpos)
+let kiwipete = Test_positions.(placement kiwipete)
+let endgame = Test_positions.(placement endgame)
 
 let%expect_test "FEN and board" =
   List.iter [ startpos; kiwipete; endgame ] ~f:(fun fen ->
