@@ -1,6 +1,6 @@
 (library
  (name oxcaml_chess_test)
- (libraries oxcaml_chess core expect_test_helpers_core)
+ (libraries oxcaml_chess core expect_test_helpers_core expectable)
  (preprocess
   (pps ppx_jane))
  (inline_tests
