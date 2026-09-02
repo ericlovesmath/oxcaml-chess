@@ -16,6 +16,9 @@ module Movelist : sig
   (** The next move and the moves after it, [Null] once exhausted *)
   val pop : t -> #(Move.t or_null * t)
   [@@zero_alloc strict]
+
+  (** Reorder highest [score] first, stable *)
+  val stable_sort : t @ unique -> compare:(Move.t -> int) -> t @ unique
 end
 
 (** Pseudolegal moves side to move, written from the start of [moves], caller is expected

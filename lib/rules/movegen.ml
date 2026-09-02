@@ -40,6 +40,26 @@ module Movelist = struct
     then #(Null, t)
     else #(This t.#moves.(t.#start), #{ t with start = t.#start + 1 })
   ;;
+
+  (* Insertion sort, descending, near-linear lol *)
+  let sort_desc arr ~score ~start ~stop =
+    for i = start + 1 to stop - 1 do
+      let move = arr.(i) in
+      let move_score = score move in
+      let mutable j = i in
+      while j > start && score arr.(j - 1) < move_score do
+        arr.(j) <- arr.(j - 1);
+        j <- j - 1
+      done;
+      arr.(j) <- move
+    done
+  ;;
+
+  let stable_sort (t : t @ unique) ~compare : t @ unique =
+    let #{ moves; start; length } = t in
+    sort_desc (borrow_ moves) ~score:compare ~start ~stop:length;
+    #{ moves; start; length }
+  ;;
 end
 
 (** NOTE: One loop over the destinations rather than separate quiet and capture passes *)

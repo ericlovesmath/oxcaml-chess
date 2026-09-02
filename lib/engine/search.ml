@@ -4,7 +4,7 @@ open Chess_rules
 module Movelist = Movegen.Movelist
 
 (* TODO: Quiescence Search *)
-(* TODO: Search deeper once move ordering makes it affordable *)
+(* TODO: Killer moves and a history table, scored above quiets and below captures *)
 
 type result =
   #{ score : int
@@ -29,7 +29,11 @@ let rec negamax (position @ local) ~depth ~ply ~alpha ~beta =
        with some kind of [unmove] maybe? *)
     #{ score = Eval.evaluate position; move = Null; nodes = 1 }
   else (
-    let moves = Movegen.generate position (Movelist.create ()) in
+    let moves =
+      Movelist.create ()
+      |> Movegen.generate position
+      |> Movelist.stable_sort ~compare:Move_order.score
+    in
     let start = #{ score = -inf; move = Null; nodes = 1 } in
     let best = best_move position moves ~depth ~ply ~alpha ~beta start in
     match best.#move with

@@ -82,15 +82,25 @@ let king_table =
 ;;
 [@@@ocamlformat "enable"]
 
-let with_value value table = Iarray.map table ~f:(fun placement -> value + placement)
+let piece_value (piece : Piece.Kind.t) : int =
+  match piece with
+  | Pawn -> 100
+  | Knight -> 300
+  | Bishop -> 330
+  | Rook -> 500
+  | Queen -> 900
+  | King -> 2000 (* The two kings cancel so the value is arbitrarily large *)
+;;
+
+let with_value piece table = Iarray.map table ~f:(fun v -> piece_value piece + v)
 
 let tables =
-  [: with_value 100 pawn_table
-   ; with_value 300 knight_table
-   ; with_value 330 bishop_table
-   ; with_value 500 rook_table
-   ; with_value 900 queen_table
-   ; with_value 2000 king_table (* The two kings cancel so the value is arbitrary *)
+  [: with_value Pawn pawn_table
+   ; with_value Knight knight_table
+   ; with_value Bishop bishop_table
+   ; with_value Rook rook_table
+   ; with_value Queen queen_table
+   ; with_value King king_table
   :]
 ;;
 
