@@ -4,6 +4,15 @@ open Chess_rules
 
 let startpos_fen = Fen.of_position Position.start
 
+type report =
+  #{ score : int
+   ; move : Move.t or_null
+   ; nodes : int
+   }
+
+(** How deep a [go] searches when the GUI did not ask for a depth *)
+let default_depth = 4
+
 module Command = struct
   type t =
     | Uci
@@ -13,10 +22,20 @@ module Command = struct
         { fen : string
         ; moves : string list
         }
-    | Go
+    | Go of { depth : int }
     | Display (* Custom command to dump debug information *)
     | Quit
     | Ignored
+
+  (* TODO: [go] ignores anything aside from depth *)
+  let rec parse_depth = function
+    | "depth" :: depth :: _ ->
+      (match Int.of_string_opt depth with
+       | Some depth -> Int.max 1 depth
+       | None -> default_depth)
+    | _ :: rest -> parse_depth rest
+    | [] -> default_depth
+  ;;
 
   let parse_position = function
     | "startpos" :: "moves" :: moves -> Set_position { fen = startpos_fen; moves }
@@ -39,9 +58,7 @@ module Command = struct
     | [ "ucinewgame" ] -> New_game
     | [ "disp" ] -> Display
     | [ "quit" ] -> Quit
-    | "go" :: _ ->
-      (* TODO: [go] currently ignores arguments *)
-      Go
+    | "go" :: tokens -> Go { depth = parse_depth tokens }
     | "position" :: tokens -> parse_position tokens
     | _ -> Ignored
   ;;
@@ -65,13 +82,17 @@ let play fen moves =
   | Error message -> Error ("bad fen: " ^ message)
 ;;
 
-let bestmove ~choose fen =
+(* TODO: A forced mate should report [score mate <moves>] *)
+let go ~choose ~depth fen =
   match Fen.to_position fen with
-  | Error message -> "info string bad fen: " ^ message
+  | Error message -> [ "info string bad fen: " ^ message ]
   | Ok position ->
-    (match choose position with
-     | Null -> "bestmove 0000"
-     | This move -> "bestmove " ^ Move.to_string move)
+    let #{ score; move; nodes } = choose position ~depth in
+    [ sprintf "info depth %d score cp %d nodes %d" depth score nodes
+    ; (match move with
+       | Null -> "bestmove 0000"
+       | This move -> "bestmove " ^ Move.to_string move)
+    ]
 ;;
 
 let board fen =
@@ -92,7 +113,7 @@ let respond ~choose fen command =
   | Is_ready -> Continue (fen, [ "readyok" ])
   | New_game -> Continue (startpos_fen, [])
   | Display -> Continue (fen, board fen)
-  | Go -> Continue (fen, [ bestmove ~choose fen ])
+  | Go { depth } -> Continue (fen, go ~choose ~depth fen)
   | Set_position { fen = requested; moves } ->
     (match play requested moves with
      | Ok fen -> Continue (fen, [])
@@ -113,12 +134,16 @@ let rec loop ~read_line ~write_line ~choose fen =
 let run ~read_line ~write_line ~choose = loop ~read_line ~write_line ~choose startpos_fen
 
 module For_testing = struct
-  let choose (_position @ local) =
-    This
-      (Move.quiet
-         ~moved:Piece.Kind.Pawn
-         ~from:(Square.of_string_exn "a1")
-         ~to_:(Square.of_string_exn "a1"))
+  let choose (_position @ local) ~depth:_ =
+    #{ score = 0
+     ; move =
+         This
+           (Move.quiet
+              ~moved:Piece.Kind.Pawn
+              ~from:(Square.of_string_exn "a1")
+              ~to_:(Square.of_string_exn "a1"))
+     ; nodes = 0
+     }
   ;;
 
   let simulate inputs =
@@ -159,6 +184,7 @@ let%expect_test "basic simulation" =
     < 1 R N B Q K B N R
     <   a b c d e f g h
     > go
+    < info depth 4 score cp 0 nodes 0
     < bestmove a1a1
     > quit
     |}]
@@ -187,6 +213,27 @@ let%expect_test "bad inputs" =
     > kwyjibo
     >
     > go
+    < info depth 4 score cp 0 nodes 0
+    < bestmove a1a1
+    |}]
+;;
+
+let%expect_test "go depth test" =
+  For_testing.simulate
+    [ "go"; "go depth 6"; "go wtime 300000 winc 100 depth 2"; "go depth banana" ];
+  [%expect
+    {|
+    > go
+    < info depth 4 score cp 0 nodes 0
+    < bestmove a1a1
+    > go depth 6
+    < info depth 6 score cp 0 nodes 0
+    < bestmove a1a1
+    > go wtime 300000 winc 100 depth 2
+    < info depth 2 score cp 0 nodes 0
+    < bestmove a1a1
+    > go depth banana
+    < info depth 4 score cp 0 nodes 0
     < bestmove a1a1
     |}]
 ;;

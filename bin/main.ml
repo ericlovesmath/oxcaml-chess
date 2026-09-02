@@ -4,9 +4,8 @@ open Oxcaml_chess
 let () =
   Uci.run
     ~read_line:(fun () -> In_channel.input_line In_channel.stdin)
-    ~write_line:(fun line ->
-      Out_channel.output_string Out_channel.stdout (line ^ "\n");
-      (* Without this a GUI hangs on a reply sitting in the buffer. *)
-      Out_channel.flush Out_channel.stdout)
-    ~choose:Search.search
+    ~write_line:print_endline
+    ~choose:(fun (position @ local) ~depth ->
+      let #{ Search.score; move; nodes } = Search.search position ~depth in
+      #{ Uci.score; move; nodes })
 ;;

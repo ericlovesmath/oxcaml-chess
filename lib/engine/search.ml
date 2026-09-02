@@ -4,8 +4,13 @@ open Chess_rules
 module Movelist = Movegen.Movelist
 
 (* TODO: Quiescence Search *)
-(* TODO: Deeper depth after move ordering *)
-let start_depth = 4
+(* TODO: Search deeper once move ordering makes it affordable *)
+
+type result =
+  #{ score : int
+   ; move : Move.t or_null
+   ; nodes : int
+   }
 
 (** Arbitrarily high score for checkmates, but faster checkmates are better *)
 let mate ply = 100_000 - ply
@@ -17,22 +22,23 @@ let inf = 1_000_000
 let terminal (position @ local) ~ply = if Position.in_check position then -mate ply else 0
 
 (* Negamax with alpha-beta pruning, returns the best score and the move *)
-let rec negamax (position @ local) ~depth ~alpha ~beta =
+let rec negamax (position @ local) ~depth ~ply ~alpha ~beta =
   if depth = 0
   then
     (* TODO: We do not check terminal checks very well, which is a problem... need to fix
        with some kind of [unmove] maybe? *)
-    #(Eval.evaluate position, Null)
+    #{ score = Eval.evaluate position; move = Null; nodes = 1 }
   else (
     let moves = Movegen.generate position (Movelist.create ()) in
-    match best_move position moves ~depth ~alpha ~beta #(-inf, Null) with
+    let start = #{ score = -inf; move = Null; nodes = 1 } in
+    let best = best_move position moves ~depth ~ply ~alpha ~beta start in
+    match best.#move with
     (* Nothing beat [-inf], so nothing was legal *)
-    | #(_, Null) -> #(terminal position ~ply:(start_depth - depth), Null)
-    | #(_, This _) as best -> best)
+    | Null -> #{ best with score = terminal position ~ply }
+    | This _ -> best)
 
-and best_move (position @ local) moves ~depth ~alpha ~beta best =
-  let #(best_score, _) = best in
-  let bound = if best_score > alpha then best_score else alpha in
+and best_move (position @ local) moves ~depth ~ply ~alpha ~beta best =
+  let bound = if best.#score > alpha then best.#score else alpha in
   if bound >= beta
   then best
   else (
@@ -44,23 +50,25 @@ and best_move (position @ local) moves ~depth ~alpha ~beta best =
         if Position.mover_in_check after
         then best
         else (
-          let #(child, _) =
-            negamax after ~depth:(depth - 1) ~alpha:(-beta) ~beta:(-bound)
+          let child =
+            negamax after ~depth:(depth - 1) ~ply:(ply + 1) ~alpha:(-beta) ~beta:(-bound)
           in
-          let score = -child in
-          if score > best_score then #(score, This move) else best)
+          let nodes = best.#nodes + child.#nodes in
+          let score = -child.#score in
+          if score > best.#score
+          then #{ score; move = This move; nodes }
+          else #{ best with nodes })
       in
-      best_move position rest ~depth ~alpha ~beta best)
+      best_move position rest ~depth ~ply ~alpha ~beta best)
 ;;
 
-let search (position @ local) =
-  let #(_, move) = negamax position ~depth:start_depth ~alpha:(-inf) ~beta:inf in
-  move
+let search (position @ local) ~depth =
+  negamax position ~depth ~ply:0 ~alpha:(-inf) ~beta:inf
 ;;
 
 let%expect_test "trivial search tests" =
   let test fen =
-    match search (Fen.to_position_exn fen) with
+    match (search (Fen.to_position_exn fen) ~depth:4).#move with
     | Null -> print_endline "none"
     | This move -> print_endline (Move.san move)
   in

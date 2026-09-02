@@ -1,5 +1,12 @@
 open Chess_primitives
 open Chess_rules
 
-(** Choosing a move for the side to move, [Null] on checkmate or stalemate *)
-val search : Position.t @ local -> Move.t or_null
+(** Search result *)
+type result =
+  #{ score : int (** Centipawns, positive for the side to move *)
+   ; move : Move.t or_null (** [Null] on checkmate or stalemate *)
+   ; nodes : int (** Positions visited (including leaves) *)
+   }
+
+(** Choosing a move for the side to move *)
+val search : Position.t @ local -> depth:int -> result
