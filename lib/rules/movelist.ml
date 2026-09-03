@@ -1,10 +1,9 @@
 open Core
 open Chess_primitives
 
-(* TODO: Check if we can shrink this, and if it matters that much *)
-
-(** The theoretical maximum number of moves is 218, but we just pad *)
-let capacity = 255
+(** It is known that there is a maximum of 218 pseudolegal moves reachable from startpos,
+    so we just leave a reasonable margin of 256, as is standard *)
+let capacity = 256
 
 type t =
   { moves : Move.t array
