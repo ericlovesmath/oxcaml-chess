@@ -31,12 +31,7 @@ val en_passant : t @ local -> Square.t or_null
 val halfmove_clock : t @ local -> int [@@zero_alloc strict]
 val fullmove_number : t @ local -> int [@@zero_alloc strict]
 
-(** Validates legal game state. NOTE: No checks for checked positions, incomplete
-
-    TODO: [Attacks.in_check] now makes the missing check writable - the side *not* to move
-    must not be in check, or the previous move was illegal. [Attacks] depends only on
-    [Board], so [Position] may use it without a cycle. Deferred because several existing
-    test positions have not been audited against it. *)
+(** Validates legal game, *doesn't check if the position is reachable* in the first place *)
 val invariant : t @ local -> unit
 
 (** Is side to move in check? *)

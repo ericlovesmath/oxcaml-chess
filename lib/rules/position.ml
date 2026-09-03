@@ -80,6 +80,8 @@ let invariant (t @ local) =
   then fail "a pawn is on rank 1 or rank 8";
   if t.halfmove_clock < 0 then fail "halfmove clock is negative";
   if t.fullmove_number < 1 then fail "fullmove number is below 1";
+  if Attacks.in_check board (Piece.Color.flip to_move)
+  then fail "the side that just moved left its king in check";
   (match t.en_passant with
    | Null -> ()
    | This square -> check_en_passant board to_move square);

@@ -230,6 +230,7 @@ let%expect_test "invalid records" =
     ; startpos ^ " w KQkq - 0 x"
     ; "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP w KQkq - 0 1"
     ; "4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1"
+    ; "4k3/8/8/4R3/8/8/8/4K3 w - - 0 1"
     ]
     ~f:(fun fen ->
       match to_position fen with
@@ -246,5 +247,6 @@ let%expect_test "invalid records" =
     Fen: bad fullmove number "x"
     Fen: expected eight ranks, got 7
     Position: castling right K needs R on h1
+    Position: the side that just moved left its king in check
     |}]
 ;;
