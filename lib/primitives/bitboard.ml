@@ -56,20 +56,20 @@ module Direction = struct
   ;;
 end
 
-(* TODO: Maybe just have [shift] use [delta] *)
-
-let shift t (direction : Direction.t) =
-  let non_file_a = I.lognot (file_mask 0) in
-  let non_file_h = I.lognot (file_mask 7) in
+(** The file a shift must not wrap into *)
+let edge_mask (direction : Direction.t) =
   match direction with
-  | North -> I.shift_left t 8
-  | South -> I.shift_right_logical t 8
-  | East -> I.logand (I.shift_left t 1) non_file_a
-  | West -> I.logand (I.shift_right_logical t 1) non_file_h
-  | North_east -> I.logand (I.shift_left t 9) non_file_a
-  | North_west -> I.logand (I.shift_left t 7) non_file_h
-  | South_east -> I.logand (I.shift_right_logical t 7) non_file_a
-  | South_west -> I.logand (I.shift_right_logical t 9) non_file_h
+  | North | South -> full
+  | East | North_east | South_east -> I.lognot (file_mask 0)
+  | West | North_west | South_west -> I.lognot (file_mask 7)
+;;
+
+let shift t direction =
+  let delta = Direction.delta direction in
+  let shifted =
+    if delta > 0 then I.shift_left t delta else I.shift_right_logical t (-delta)
+  in
+  I.logand shifted (edge_mask direction)
 ;;
 
 let to_string t =
