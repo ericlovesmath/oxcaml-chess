@@ -66,7 +66,9 @@ let rook ~occupancy square =
 
 let queen ~occupancy square = B.(bishop ~occupancy square lor rook ~occupancy square)
 
-(* TODO: Make these checks short circuit? Does it optimize this away? Doubt it. *)
+(* NOTE: Shortcircuiting the attack set computations actually doesn't help that much
+   because of (what I assume to be) branch prediction failures, since the filter is almost
+   always just showing unattacked positions. Measured no performance loss, not worth. *)
 
 let attackers_to board square ~by =
   let occupancy = Board.occupancy board in

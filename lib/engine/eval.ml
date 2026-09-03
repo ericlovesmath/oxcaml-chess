@@ -119,7 +119,8 @@ let rec sum_squares table ~color squares acc =
     sum_squares table ~color (B.remove_lowest squares) (acc + entry))
 ;;
 
-(* TODO: Test List.sum [@@kind ??] maybe? *)
+(* NOTE: [List.sum (module Int)] would be nice but [~f] captures [board] and [color], so
+   we do this manual unrolling... perhaps there is a better way... *)
 let rec sum_kinds board color kinds acc =
   match kinds with
   | [] -> acc

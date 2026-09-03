@@ -1,6 +1,6 @@
 (** The placement of pieces on the board, kind-major layout *)
 
-(* TODO: Should I be exposing this as private or just the layout? *)
+(* NOTE: [private] just to avoid having to write out kind annotation *)
 type t = private
   #{ pawns : Bitboard.t
    ; knights : Bitboard.t
