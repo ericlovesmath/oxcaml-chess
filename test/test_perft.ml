@@ -33,16 +33,10 @@ let init () =
   }
 ;;
 
-let rec any_legal (position @ local) moves =
-  match Movegen.Movelist.pop moves with
-  | #(Null, _) -> false
-  | #(This move, rest) ->
-    (not (Position.mover_in_check (Position.make_move position move)))
-    || any_legal position rest
-;;
-
 let has_legal_move (position @ local) =
-  any_legal position (Movegen.generate position (Movegen.Movelist.create ()))
+  Movelist.exists (Movegen.generate position) ~f:(fun move ->
+    move |> Position.make_move position |> Position.mover_in_check |> not)
+  [@nontail]
 ;;
 
 let record counts move (after @ local) =
@@ -63,16 +57,16 @@ let record counts move (after @ local) =
 
 (* A move is legal exactly when it does not leave its own king attacked *)
 let rec walk (position @ local) depth counts =
-  visit position (Movegen.generate position (Movegen.Movelist.create ())) depth counts
+  visit position (Movegen.generate position) 0 depth counts [@nontail]
 
-and visit (position @ local) moves depth counts =
-  match Movegen.Movelist.pop moves with
-  | #(Null, _) -> ()
-  | #(This move, rest) ->
+and visit (position @ local) moves i depth counts =
+  if i < Movelist.length moves
+  then (
+    let move = Movelist.get moves i in
     let after = Position.make_move position move in
     if not (Position.mover_in_check after)
     then if depth = 1 then record counts move after else walk after (depth - 1) counts;
-    visit position rest depth counts
+    visit position moves (i + 1) depth counts)
 ;;
 
 let cell width text = String.pad_left text ~len:width

@@ -3,77 +3,18 @@ open Chess_primitives
 module B = Bitboard
 module D = Bitboard.Direction
 
-(* TODO: I doubt this padding will slow it down, but check later *)
-
-(** The theoretical maximum number of moves is 218, but we just pad *)
-let max_moves = 255
-
-(* NOTE: I love uniqueness so much thank you Ms. Street *)
-module Movelist = struct
-  type t =
-    #{ moves : Move.t array
-     ; start : int
-     ; length : int
-     }
-
-  let dummy_move =
-    let a1 = Square.unsafe_of_int 0 in
-    Move.quiet ~moved:Pawn ~from:a1 ~to_:a1
-  ;;
-
-  let create () : t @ unique =
-    #{ moves = Array.create ~len:max_moves dummy_move; start = 0; length = 0 }
-  ;;
-
-  let clear (t : t @ unique) : t @ unique = #{ t with start = 0; length = 0 }
-
-  let push (t : t @ unique) (move : Move.t) : t @ unique =
-    let #{ moves; start; length } = t in
-    Array.set (borrow_ moves) length move;
-    #{ moves; start; length = length + 1 }
-  ;;
-
-  let length t = t.#length - t.#start
-
-  let pop t =
-    if t.#start >= t.#length
-    then #(Null, t)
-    else #(This t.#moves.(t.#start), #{ t with start = t.#start + 1 })
-  ;;
-
-  (* Insertion sort, descending, near-linear lol *)
-  let sort_desc arr ~score ~start ~stop =
-    for i = start + 1 to stop - 1 do
-      let move = arr.(i) in
-      let move_score = score move in
-      let mutable j = i in
-      while j > start && score arr.(j - 1) < move_score do
-        arr.(j) <- arr.(j - 1);
-        j <- j - 1
-      done;
-      arr.(j) <- move
-    done
-  ;;
-
-  let stable_sort (t : t @ unique) ~compare : t @ unique =
-    let #{ moves; start; length } = t in
-    sort_desc (borrow_ moves) ~score:compare ~start ~stop:length;
-    #{ moves; start; length }
-  ;;
-end
-
 (** NOTE: One loop over the destinations rather than separate quiet and capture passes *)
 let rec emit_targets ~board ~moved ~from targets moves =
-  if B.is_empty targets
-  then moves
-  else (
+  if not (B.is_empty targets)
+  then (
     let to_ = B.lowest_square targets in
     let move =
       match Board.kind_at board to_ with
       | Null -> Move.quiet ~moved ~from ~to_
       | This captured -> Move.capture ~moved ~captured ~from ~to_
     in
-    emit_targets ~board ~moved ~from (B.remove_lowest targets) (Movelist.push moves move))
+    Movelist.push moves move;
+    emit_targets ~board ~moved ~from (B.remove_lowest targets) moves)
 ;;
 
 let attacks_of ~occupancy ~kind square =
@@ -87,13 +28,12 @@ let attacks_of ~occupancy ~kind square =
 ;;
 
 let rec emit_pieces ~board ~to_move ~kind pieces moves =
-  if B.is_empty pieces
-  then moves
-  else (
+  if not (B.is_empty pieces)
+  then (
     let from = B.lowest_square pieces in
     let attacks = attacks_of ~occupancy:(Board.occupancy board) ~kind from in
     let targets = B.(attacks - Board.color_board board to_move) in
-    let moves = emit_targets ~board ~moved:kind ~from targets moves in
+    emit_targets ~board ~moved:kind ~from targets moves;
     emit_pieces ~board ~to_move ~kind (B.remove_lowest pieces) moves)
 ;;
 
@@ -104,9 +44,9 @@ let emit_kind ~board ~to_move ~kind moves =
 
 (** Trying Queen promotion first because... that seems reasonably better *)
 let push_promotions ~captured ~from ~to_ moves =
-  let moves = Movelist.push moves (Move.promote ~to_kind:Queen ~captured ~from ~to_) in
-  let moves = Movelist.push moves (Move.promote ~to_kind:Rook ~captured ~from ~to_) in
-  let moves = Movelist.push moves (Move.promote ~to_kind:Bishop ~captured ~from ~to_) in
+  Movelist.push moves (Move.promote ~to_kind:Queen ~captured ~from ~to_);
+  Movelist.push moves (Move.promote ~to_kind:Rook ~captured ~from ~to_);
+  Movelist.push moves (Move.promote ~to_kind:Bishop ~captured ~from ~to_);
   Movelist.push moves (Move.promote ~to_kind:Knight ~captured ~from ~to_)
 ;;
 
@@ -131,17 +71,14 @@ let pawn_move ~becomes ~captured ~from ~to_ =
 let promoting ~delta to_ = Square.rank to_ = if delta > 0 then 7 else 0
 
 let rec emit_pawn ~board ~becomes ~delta targets moves =
-  if B.is_empty targets
-  then moves
-  else (
+  if not (B.is_empty targets)
+  then (
     let to_ = B.lowest_square targets in
     let from = Square.unsafe_of_int ((to_ :> int) - delta) in
     let captured = Board.kind_at board to_ in
-    let moves =
-      if promoting ~delta to_
-      then push_promotions ~captured ~from ~to_ moves
-      else Movelist.push moves (pawn_move ~becomes ~captured ~from ~to_)
-    in
+    if promoting ~delta to_
+    then push_promotions ~captured ~from ~to_ moves
+    else Movelist.push moves (pawn_move ~becomes ~captured ~from ~to_);
     emit_pawn ~board ~becomes ~delta (B.remove_lowest targets) moves)
 ;;
 
@@ -173,11 +110,11 @@ let emit_pawns ~board ~to_move ~en_passant moves =
   let step = D.delta forward in
   let east_step = step + D.delta D.East
   and west_step = step + D.delta D.West in
-  let moves = emit_pawn ~board ~becomes:Step ~delta:step pushed moves in
-  let moves = emit_pawn ~board ~becomes:Double ~delta:(step * 2) pushed_twice moves in
-  let moves = emit_pawn ~board ~becomes:Step ~delta:east_step took_east moves in
-  let moves = emit_pawn ~board ~becomes:Step ~delta:west_step took_west moves in
-  let moves = emit_pawn ~board ~becomes:Passing ~delta:east_step passed_east moves in
+  emit_pawn ~board ~becomes:Step ~delta:step pushed moves;
+  emit_pawn ~board ~becomes:Double ~delta:(step * 2) pushed_twice moves;
+  emit_pawn ~board ~becomes:Step ~delta:east_step took_east moves;
+  emit_pawn ~board ~becomes:Step ~delta:west_step took_west moves;
+  emit_pawn ~board ~becomes:Passing ~delta:east_step passed_east moves;
   emit_pawn ~board ~becomes:Passing ~delta:west_step passed_west moves
 ;;
 
@@ -210,39 +147,35 @@ let emit_castle ~board ~to_move ~castling ~side moves =
      && B.is_empty B.(between land Board.occupancy board)
      && unattacked ~board e transit final
   then Movelist.push moves (Move.castle ~color:to_move ~side)
-  else moves
 ;;
 
-let generate position moves =
+let fill position moves =
   let board = Position.board position in
   let to_move = Position.to_move position in
-  let moves = Movelist.clear moves in
-  let en_passant = Position.en_passant position in
-  let moves = emit_pawns ~board ~to_move ~en_passant moves in
-  let moves = emit_kind ~board ~to_move ~kind:Knight moves in
-  let moves = emit_kind ~board ~to_move ~kind:Bishop moves in
-  let moves = emit_kind ~board ~to_move ~kind:Rook moves in
-  let moves = emit_kind ~board ~to_move ~kind:Queen moves in
-  let moves = emit_kind ~board ~to_move ~kind:King moves in
   let castling = Position.castling position in
-  let moves = emit_castle ~board ~to_move ~castling ~side:Kingside moves in
-  let moves = emit_castle ~board ~to_move ~castling ~side:Queenside moves in
-  moves
+  let en_passant = Position.en_passant position in
+  emit_pawns ~board ~to_move ~en_passant moves;
+  emit_kind ~board ~to_move ~kind:Knight moves;
+  emit_kind ~board ~to_move ~kind:Bishop moves;
+  emit_kind ~board ~to_move ~kind:Rook moves;
+  emit_kind ~board ~to_move ~kind:Queen moves;
+  emit_kind ~board ~to_move ~kind:King moves;
+  emit_castle ~board ~to_move ~castling ~side:Kingside moves;
+  emit_castle ~board ~to_move ~castling ~side:Queenside moves
 ;;
 
-let rec scan moves token =
-  match Movelist.pop moves with
-  | #(Null, _) -> Null
-  | #(This move, rest) ->
-    if String.equal (Move.to_string move) token then This move else scan rest token
+let generate position = exclave_ Movelist.build (fun moves -> fill position moves)
+
+let find (position @ local) token =
+  Movelist.find (generate position) ~f:(fun move ->
+    String.equal (Move.to_string move) token)
+  [@nontail]
 ;;
 
-let find (position @ local) token = scan (generate position (Movelist.create ())) token
-
-let rec to_list moves acc =
-  match Movelist.pop moves with
-  | #(Null, _) -> List.rev acc
-  | #(This move, rest) -> to_list rest (move :: acc)
+(* Only [show] wants a list. Kept here rather than on [Movelist] so that the one heap
+   allocation in sight of the generator stays visible at its use. *)
+let to_list (moves @ local) =
+  List.init (Movelist.length moves) ~f:(fun i -> Movelist.get moves i) [@nontail]
 ;;
 
 (** Visualization of [fen] position and available moves *)
@@ -252,8 +185,7 @@ let show fen =
     | Ok position -> position
     | Error message -> failwith message
   in
-  let moves = generate position (Movelist.create ()) in
-  let moves = to_list moves [] in
+  let moves = to_list (generate position) in
   List.iter2_exn
     (String.split_lines (Board.to_string (Position.board position)))
     (String.split_lines (Move.diagram ~color:(Position.to_move position) moves))

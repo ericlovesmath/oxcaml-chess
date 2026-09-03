@@ -1,7 +1,6 @@
 open Core
 open Chess_primitives
 open Chess_rules
-module Movelist = Movegen.Movelist
 
 (* TODO: Quiescence Search *)
 (* TODO: Killer moves and a history table, scored above quiets and below captures *)
@@ -21,53 +20,62 @@ let inf = 1_000_000
 (** If no legal moves, we assume mate if the side to move is in check, stalemate otherwise *)
 let terminal (position @ local) ~ply = if Position.in_check position then -mate ply else 0
 
+type node =
+  #{ depth : int
+   ; ply : int
+   ; alpha : int
+   ; beta : int
+   }
+
+(** Node one ply deeper with the turn flipped *)
+let child_of node ~bound =
+  #{ depth = node.#depth - 1; ply = node.#ply + 1; alpha = -node.#beta; beta = -bound }
+;;
+
+(** Folds a searched [child] into [best] *)
+let improve best move ~child =
+  let nodes = best.#nodes + child.#nodes in
+  let score = -child.#score in
+  if score > best.#score
+  then #{ score; move = This move; nodes }
+  else #{ best with nodes }
+;;
+
 (* Negamax with alpha-beta pruning, returns the best score and the move *)
-let rec negamax (position @ local) ~depth ~ply ~alpha ~beta =
-  if depth = 0
+let rec negamax (position @ local) node =
+  if node.#depth = 0
   then
     (* TODO: We do not check terminal checks very well, which is a problem... need to fix
        with some kind of [unmove] maybe? *)
     #{ score = Eval.evaluate position; move = Null; nodes = 1 }
   else (
-    let moves =
-      Movelist.create ()
-      |> Movegen.generate position
-      |> Movelist.stable_sort ~compare:Move_order.score
-    in
+    let moves = Movelist.sorted (Movegen.generate position) ~score:Move_order.score in
     let start = #{ score = -inf; move = Null; nodes = 1 } in
-    let best = best_move position moves ~depth ~ply ~alpha ~beta start in
+    let best = best_move position moves node ~i:0 start in
     match best.#move with
     (* Nothing beat [-inf], so nothing was legal *)
-    | Null -> #{ best with score = terminal position ~ply }
+    | Null -> #{ best with score = terminal position ~ply:node.#ply }
     | This _ -> best)
 
-and best_move (position @ local) moves ~depth ~ply ~alpha ~beta best =
-  let bound = if best.#score > alpha then best.#score else alpha in
-  if bound >= beta
+and best_move (position @ local) moves node ~i best =
+  let bound = Int.max best.#score node.#alpha in
+  if bound >= node.#beta || i >= Movelist.length moves
   then best
   else (
-    match Movelist.pop moves with
-    | #(Null, _) -> best
-    | #(This move, rest) ->
-      let after = Position.make_move position move in
-      let best =
-        if Position.mover_in_check after
-        then best
-        else (
-          let child =
-            negamax after ~depth:(depth - 1) ~ply:(ply + 1) ~alpha:(-beta) ~beta:(-bound)
-          in
-          let nodes = best.#nodes + child.#nodes in
-          let score = -child.#score in
-          if score > best.#score
-          then #{ score; move = This move; nodes }
-          else #{ best with nodes })
-      in
-      best_move position rest ~depth ~ply ~alpha ~beta best)
+    let move = Movelist.get moves i in
+    let after = Position.make_move position move in
+    let best =
+      if Position.mover_in_check after
+      then best
+      else (
+        let child = negamax after (child_of node ~bound) in
+        improve best move ~child)
+    in
+    best_move position moves node ~i:(i + 1) best)
 ;;
 
 let search (position @ local) ~depth =
-  negamax position ~depth ~ply:0 ~alpha:(-inf) ~beta:inf
+  negamax position #{ depth; ply = 0; alpha = -inf; beta = inf }
 ;;
 
 let%expect_test "trivial search tests" =

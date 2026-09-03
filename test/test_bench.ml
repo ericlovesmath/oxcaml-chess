@@ -20,7 +20,6 @@ let measure (name, fen, depth) =
     ; depth : int
     ; nodes : int
     ; words : int
-    ; words_per_node = (words / nodes : int)
     ; score : int
     ; move = (san move : string)
     }]
@@ -37,13 +36,13 @@ let%expect_test "search work per position" =
   |> Expectable.print;
   [%expect
     {|
-    ┌──────────┬───────┬───────┬────────┬────────────────┬───────┬──────┐
-    │ position │ depth │ nodes │ words  │ words_per_node │ score │ move │
-    ├──────────┼───────┼───────┼────────┼────────────────┼───────┼──────┤
-    │ startpos │ 4     │ 25332 │ 740096 │ 29             │   0   │ Nc3  │
-    │ kiwipete │ 4     │  6191 │ 550656 │ 88             │  70   │ Bxa6 │
-    │ midgame  │ 4     │ 15997 │ 819456 │ 51             │ -90   │ Nd5  │
-    │ endgame  │ 5     │  7760 │ 295680 │ 38             │ 110   │ Rxf4 │
-    └──────────┴───────┴───────┴────────┴────────────────┴───────┴──────┘
+    ┌──────────┬───────┬───────┬───────┬───────┬──────┐
+    │ position │ depth │ nodes │ words │ score │ move │
+    ├──────────┼───────┼───────┼───────┼───────┼──────┤
+    │ startpos │ 4     │ 25332 │ 0     │   0   │ Nc3  │
+    │ kiwipete │ 4     │  6191 │ 0     │  70   │ Bxa6 │
+    │ midgame  │ 4     │ 15997 │ 0     │ -90   │ Nd5  │
+    │ endgame  │ 5     │  7760 │ 0     │ 110   │ Rxf4 │
+    └──────────┴───────┴───────┴───────┴───────┴──────┘
     |}]
 ;;
