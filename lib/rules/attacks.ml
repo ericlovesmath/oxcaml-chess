@@ -41,17 +41,16 @@ let pawn (color : Piece.Color.t) pawns =
 
 (** Steps outward until the board ends or a piece stops the ray *)
 let ray ~occupancy ~direction from =
-  (* TODO: There must be a nice way to define local arguments that are enclosed in the
-     local closure sure that it gets lifted with no minor heap allocations... but I can't
-     find out how. This seems nicer than just making a local loop, but investigate! *)
-  let mutable b = from in
-  let mutable acc = B.empty in
-  while not (B.is_empty b) do
-    b <- B.shift b direction;
-    acc <- B.(acc lor b);
-    if not (B.is_empty B.(b land occupancy)) then b <- B.empty
-  done;
-  acc
+  (* NOTE: [@inline] is here to let the optimizer turn this into a loop to avoid closures *)
+  let[@inline] rec go b acc =
+    if B.is_empty b
+    then acc
+    else (
+      let b = B.shift b direction in
+      let acc = B.(acc lor b) in
+      if B.is_empty B.(b land occupancy) then go b acc else acc)
+  in
+  go from B.empty
 ;;
 
 let bishop ~occupancy square =
