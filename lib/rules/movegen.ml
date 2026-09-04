@@ -17,6 +17,7 @@ let rec emit_targets ~board ~moved ~from targets moves =
     emit_targets ~board ~moved ~from (B.remove_lowest targets) moves)
 ;;
 
+(* TODO: [Pawn] is unreachable, probably should handle that properly... *)
 let attacks_of ~occupancy ~kind square =
   match (kind : Piece.Kind.t) with
   | Knight -> Attacks.knight square
@@ -96,56 +97,53 @@ let emit_pawns ~board ~to_move ~en_passant moves =
     | Null -> B.empty
     | This square -> B.of_square square
   in
-  (* Captures *)
+  (* Destinations *)
   let advanced = B.shift pawns forward in
   let east = B.shift advanced D.East
   and west = B.shift advanced D.West in
   (* Push twice and keep what lands rather than testing home ranks *)
   let pushed = B.(advanced land vacant) in
   let pushed_twice = B.(shift (pushed land rank_mask staging) forward land vacant) in
-  let took_east = B.(east land them)
-  and took_west = B.(west land them) in
-  let passed_east = B.(east land in_passing)
-  and passed_west = B.(west land in_passing) in
+  (* Step back to each origin *)
   let step = D.delta forward in
   let east_step = step + D.delta D.East
   and west_step = step + D.delta D.West in
   emit_pawn ~board ~becomes:Step ~delta:step pushed moves;
   emit_pawn ~board ~becomes:Double ~delta:(step * 2) pushed_twice moves;
-  emit_pawn ~board ~becomes:Step ~delta:east_step took_east moves;
-  emit_pawn ~board ~becomes:Step ~delta:west_step took_west moves;
-  emit_pawn ~board ~becomes:Passing ~delta:east_step passed_east moves;
-  emit_pawn ~board ~becomes:Passing ~delta:west_step passed_west moves
+  emit_pawn ~board ~becomes:Step ~delta:east_step B.(east land them) moves;
+  emit_pawn ~board ~becomes:Step ~delta:west_step B.(west land them) moves;
+  emit_pawn ~board ~becomes:Passing ~delta:east_step B.(east land in_passing) moves;
+  emit_pawn ~board ~becomes:Passing ~delta:west_step B.(west land in_passing) moves
 ;;
 
+let rec none_attacked board ~by squares =
+  B.is_empty squares
+  || ((not (Attacks.is_attacked board (B.lowest_square squares) ~by))
+      && none_attacked board ~by (B.remove_lowest squares))
+;;
+
+let file_b = B.file_mask 1
+let file_c = B.file_mask 2
+let file_d = B.file_mask 3
+let file_e = B.file_mask 4
+let file_f = B.file_mask 5
+let file_g = B.file_mask 6
+
 let emit_castle ~board ~to_move ~castling ~side moves =
-  let rank =
-    match (to_move : Piece.Color.t) with
-    | White -> 0
-    | Black -> 7
-  in
-  let file f = Square.create ~rank ~file:f in
-  let b = file 1
-  and c = file 2
-  and d = file 3
-  and e = file 4
-  and f = file 5
-  and g = file 6 in
-  let #(between, transit, final) =
+  let #(between, crossed) =
     match (side : Castling.Side.t) with
-    | Kingside -> #(B.(of_square f lor of_square g), f, g)
-    | Queenside -> #(B.(of_square b lor of_square c lor of_square d), d, c)
+    | Kingside -> #(B.(file_f lor file_g), B.(file_e lor file_f lor file_g))
+    | Queenside -> #(B.(file_b lor file_c lor file_d), B.(file_c lor file_d lor file_e))
   in
-  (* TODO: So unergonomic for performance... maybe I can just force inline? *)
-  let unattacked ~board a b c =
-    let by = Piece.Color.flip to_move in
-    (not (Attacks.is_attacked board a ~by))
-    && (not (Attacks.is_attacked board b ~by))
-    && not (Attacks.is_attacked board c ~by)
+  let back =
+    B.rank_mask
+      (match (to_move : Piece.Color.t) with
+       | White -> 0
+       | Black -> 7)
   in
   if Castling.mem castling to_move side
-     && B.is_empty B.(between land Board.occupancy board)
-     && unattacked ~board e transit final
+     && B.is_empty B.(between land back land Board.occupancy board)
+     && none_attacked board ~by:(Piece.Color.flip to_move) B.(crossed land back)
   then Movelist.push moves (Move.castle ~color:to_move ~side)
 ;;
 
@@ -164,8 +162,10 @@ let fill position moves =
   emit_castle ~board ~to_move ~castling ~side:Queenside moves
 ;;
 
-let generate position = exclave_ Movelist.build (fun moves -> fill position moves)
+(* TODO: Generate legally, not pseudolegally, which would be faster... *)
+let generate position = exclave_ Movelist.build (fill position)
 
+(* TODO: [Move.to_string] allocates a string per candidate, avoid? *)
 let find (position @ local) token =
   Movelist.find (generate position) ~f:(fun move ->
     String.equal (Move.to_string move) token)
