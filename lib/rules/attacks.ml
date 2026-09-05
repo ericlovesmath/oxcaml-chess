@@ -17,19 +17,7 @@ let knight square =
     lor hop North_west North)
 ;;
 
-let king square =
-  let b = B.of_square square in
-  let step direction = B.shift b direction in
-  B.(
-    step North
-    lor step North_east
-    lor step East
-    lor step South_east
-    lor step South
-    lor step South_west
-    lor step West
-    lor step North_west)
-;;
+let king square = Tables.king square
 
 let pawn (color : Piece.Color.t) pawns =
   match color with
