@@ -37,30 +37,29 @@ let pawn (color : Piece.Color.t) pawns =
   | Black -> B.(shift pawns South_east lor shift pawns South_west)
 ;;
 
-(* TODO: Use ray tables / magic boards / PEXT instead of naive loop. Probably ray tables. *)
-
-(** Steps outward until the board ends or a piece stops the ray *)
-let ray ~occupancy ~direction from =
-  (* NOTE: [@inline] is here to let the optimizer turn this into a loop to avoid closures *)
-  let[@inline] rec go b acc =
-    if B.is_empty b
-    then acc
-    else (
-      let b = B.shift b direction in
-      let acc = B.(acc lor b) in
-      if B.is_empty B.(b land occupancy) then go b acc else acc)
-  in
-  go from B.empty
+(** Ray attacks (ray to the edge minus the ray behind the first blocker) *)
+let[@inline] slide ~occupancy ~direction square =
+  let ray = Tables.ray square direction in
+  let blockers = B.(ray land occupancy) in
+  if B.is_empty blockers
+  then ray
+  else (
+    let first =
+      if B.Direction.delta direction > 0
+      then B.lowest_square blockers
+      else B.highest_square blockers
+    in
+    B.(ray - Tables.ray first direction))
 ;;
 
 let bishop ~occupancy square =
-  let ray direction = ray ~occupancy ~direction (B.of_square square) in
-  B.(ray North_east lor ray South_east lor ray South_west lor ray North_west)
+  let[@inline] slide direction = slide ~occupancy ~direction square in
+  B.(slide North_east lor slide South_east lor slide South_west lor slide North_west)
 ;;
 
 let rook ~occupancy square =
-  let ray direction = ray ~occupancy ~direction (B.of_square square) in
-  B.(ray North lor ray East lor ray South lor ray West)
+  let[@inline] slide direction = slide ~occupancy ~direction square in
+  B.(slide North lor slide East lor slide South lor slide West)
 ;;
 
 let queen ~occupancy square = B.(bishop ~occupancy square lor rook ~occupancy square)
@@ -114,14 +113,16 @@ let board_of pieces =
 
 let show pieces color =
   let board = board_of pieces in
-  let rec attacked acc = function
-    | [] -> acc
-    | square :: rest ->
-      attacked (if is_attacked board square ~by:color then B.set acc square else acc) rest
+  let attacked =
+    (List.fold [@kind value_or_null bits64])
+      Square.all
+      ~init:B.empty
+      ~f:(fun acc square ->
+        if is_attacked board square ~by:color then B.set acc square else acc)
   in
   List.iter2_exn
     (String.split_lines (Board.to_string board))
-    (String.split_lines (B.to_string (attacked B.empty Square.all)))
+    (String.split_lines (B.to_string attacked))
     ~f:(printf "  %-17s   %s\n");
   printf "\n"
 ;;

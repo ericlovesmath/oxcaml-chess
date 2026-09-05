@@ -24,6 +24,7 @@
   ocaml_intrinsics_kernel
   ppx_jane
   core
+  unboxed
   (expect_test_helpers_core :with-test)
   (expectable :with-test)
   (core_unix :with-dev-setup)
