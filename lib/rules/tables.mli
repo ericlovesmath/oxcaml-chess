@@ -10,3 +10,7 @@ val ray : Square.t -> Bitboard.Direction.t -> Bitboard.t
 (** The squares a king on [square] attacks, table built on module init *)
 val king : Square.t -> Bitboard.t
 [@@zero_alloc strict]
+
+(** The squares a knight on [square] attacks, table built on module init *)
+val knight : Square.t -> Bitboard.t
+[@@zero_alloc strict]

@@ -3,20 +3,7 @@ open Chess_primitives
 module B = Bitboard
 open B.Direction
 
-let knight square =
-  let b = B.of_square square in
-  let hop dir dir' = B.shift (B.shift b dir) dir' in
-  B.(
-    hop North_east North
-    lor hop North_east East
-    lor hop South_east East
-    lor hop South_east South
-    lor hop South_west South
-    lor hop South_west West
-    lor hop North_west West
-    lor hop North_west North)
-;;
-
+let knight square = Tables.knight square
 let king square = Tables.king square
 
 let pawn (color : Piece.Color.t) pawns =

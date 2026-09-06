@@ -45,22 +45,43 @@ let ray (square : Square.t) (direction : B.Direction.t) =
 [@@inline]
 ;;
 
-(** Union of [f] over every direction *)
-let all_directions ~f =
-  B.Direction.all
+let union_directions list ~f =
+  list
   |> (List.map [@kind value_or_null bits64]) ~f
   |> (List.fold [@kind bits64 bits64]) ~init:B.empty ~f:B.( lor )
 ;;
 
 let kings =
   Int64_u.Array.init 64 ~f:(fun i ->
-    all_directions ~f:(B.shift (B.of_square (Square.unsafe_of_int i))))
+    union_directions B.Direction.all ~f:(B.shift (B.of_square (Square.unsafe_of_int i))))
 ;;
 
 let king (square : Square.t) = Int64_u.Array.unsafe_get kings (square :> int) [@@inline]
 
+let hops : (B.Direction.t * B.Direction.t) list =
+  [ North_east, North
+  ; North_east, East
+  ; South_east, East
+  ; South_east, South
+  ; South_west, South
+  ; South_west, West
+  ; North_west, West
+  ; North_west, North
+  ]
+;;
+
+let knights =
+  Int64_u.Array.init 64 ~f:(fun i ->
+    let b = B.of_square (Square.unsafe_of_int i) in
+    union_directions hops ~f:(fun (d, d') -> B.shift (B.shift b d) d'))
+;;
+
+let knight (square : Square.t) = Int64_u.Array.unsafe_get knights (square :> int)
+[@@inline]
+;;
+
 let%expect_test "every ray out of a square" =
-  let star square = all_directions ~f:(ray square) in
+  let star square = union_directions B.Direction.all ~f:(ray square) in
   let test square =
     square |> Square.of_string_exn |> star |> B.to_string |> print_endline
   in
@@ -133,6 +154,47 @@ let%expect_test "king tests" =
     8 . . . . . . x .
     7 . . . . . . x x
     6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . . . . . . . .
+    2 . . . . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+    |}]
+;;
+
+let%expect_test "knight tests" =
+  let test square =
+    square |> Square.of_string_exn |> knight |> B.to_string |> print_endline
+  in
+  test "d4";
+  test "a1";
+  test "h8";
+  [%expect
+    {|
+    8 . . . . . . . .
+    7 . . . . . . . .
+    6 . . x . x . . .
+    5 . x . . . x . .
+    4 . . . . . . . .
+    3 . x . . . x . .
+    2 . . x . x . . .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    8 . . . . . . . .
+    7 . . . . . . . .
+    6 . . . . . . . .
+    5 . . . . . . . .
+    4 . . . . . . . .
+    3 . x . . . . . .
+    2 . . x . . . . .
+    1 . . . . . . . .
+      a b c d e f g h
+
+    8 . . . . . . . .
+    7 . . . . . x . .
+    6 . . . . . . x .
     5 . . . . . . . .
     4 . . . . . . . .
     3 . . . . . . . .
