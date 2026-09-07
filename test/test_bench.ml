@@ -1,7 +1,7 @@
+(* Tests for node efficiency and GC allocations *)
+
 open Core
 open Oxcaml_chess
-
-(* Tests for node efficiency and GC allocations *)
 
 let san move =
   match move with
@@ -13,12 +13,13 @@ let san move =
 let measure (name, fen, depth) =
   let position = Fen.to_position_exn fen in
   let before = Gc.allocated_words () in
-  let #{ Search.score; move; nodes } = Search.search position ~depth in
+  let #{ Search.score; move; nodes; leaves } = Search.search position ~depth in
   let words = Gc.allocated_words () - before in
   [%sexp
     { position = (name : string)
     ; depth : int
     ; nodes : int
+    ; leaves : int
     ; words : int
     ; score : int
     ; move = (san move : string)
@@ -36,13 +37,13 @@ let%expect_test "search work per position" =
   |> Expectable.print;
   [%expect
     {|
-    ┌──────────┬───────┬───────┬───────┬───────┬──────┐
-    │ position │ depth │ nodes │ words │ score │ move │
-    ├──────────┼───────┼───────┼───────┼───────┼──────┤
-    │ startpos │ 4     │ 25332 │ 0     │   0   │ Nc3  │
-    │ kiwipete │ 4     │  6191 │ 0     │  70   │ Bxa6 │
-    │ midgame  │ 4     │ 15997 │ 0     │ -90   │ Nd5  │
-    │ endgame  │ 5     │  7760 │ 0     │ 110   │ Rxf4 │
-    └──────────┴───────┴───────┴───────┴───────┴──────┘
+    ┌──────────┬───────┬───────┬────────┬───────┬───────┬──────┐
+    │ position │ depth │ nodes │ leaves │ words │ score │ move │
+    ├──────────┼───────┼───────┼────────┼───────┼───────┼──────┤
+    │ startpos │ 4     │ 25332 │ 22441  │ 0     │   0   │ Nc3  │
+    │ kiwipete │ 4     │  6191 │  4040  │ 0     │  70   │ Bxa6 │
+    │ midgame  │ 4     │ 15997 │ 12796  │ 0     │ -90   │ Nd5  │
+    │ endgame  │ 5     │  7760 │  6605  │ 0     │ 110   │ Rxf4 │
+    └──────────┴───────┴───────┴────────┴───────┴───────┴──────┘
     |}]
 ;;

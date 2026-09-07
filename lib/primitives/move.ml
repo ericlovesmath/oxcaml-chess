@@ -36,16 +36,38 @@ let move_kind_of_index = function
 
 let from t = Square.unsafe_of_int (t land 0x3F)
 let to_ t = Square.unsafe_of_int ((t lsr to_shift) land 0x3F)
-let moved t = Piece.Kind.unsafe_of_index ((t lsr moved_shift) land 0x7)
 let kind t = move_kind_of_index ((t lsr kind_shift) land 0x3)
 
+(** The three bits at [shift], holds piece kind or [absent] *)
+let kind_index t shift = (t lsr shift) land 0x7
+
+let moved t = Piece.Kind.unsafe_of_index (kind_index t moved_shift)
+
 let kind_field t shift : Piece.Kind.t or_null =
-  let index = (t lsr shift) land 0x7 in
+  let index = kind_index t shift in
   if index = absent then Null else This (Piece.Kind.unsafe_of_index index)
 ;;
 
 let captured t = kind_field t captured_shift
 let promotion t = kind_field t promotion_shift
+
+let captured_square t =
+  match kind t with
+  | En_passant -> Square.create ~rank:(Square.rank (from t)) ~file:(Square.file (to_ t))
+  | Normal | Double_push | Castle -> to_ t
+;;
+
+(** Which way the king went on castle *)
+let castle_side t : Castling.Side.t =
+  if Square.file (to_ t) = 6 then Kingside else Queenside
+;;
+
+let castle_rook t =
+  let rank = Square.rank (to_ t) in
+  match castle_side t with
+  | Kingside -> #(Square.create ~rank ~file:7, Square.create ~rank ~file:5)
+  | Queenside -> #(Square.create ~rank ~file:0, Square.create ~rank ~file:3)
+;;
 
 (* [absent] where there is no piece *)
 let index_of_piece = function
@@ -106,7 +128,7 @@ let promote ~to_kind ~captured ~from ~to_ =
   create ~from ~to_ ~moved:Pawn ~captured ~promotion:(This to_kind) ~kind:Normal
 ;;
 
-let is_capture t = (t lsr captured_shift) land 0x7 <> absent
+let is_capture t = kind_index t captured_shift <> absent
 let equal (a : int) (b : int) = a = b
 
 let to_string t =
@@ -123,7 +145,10 @@ let file_char square = Char.of_int_exn (Char.to_int 'a' + Square.file square)
 (* Standard algebraic notation *)
 let san move =
   match kind move with
-  | Castle -> if Square.file (to_ move) = 6 then "O-O" else "O-O-O"
+  | Castle ->
+    (match castle_side move with
+     | Kingside -> "O-O"
+     | Queenside -> "O-O-O")
   | Normal | Double_push | En_passant ->
     let mover =
       match moved move with
@@ -144,13 +169,10 @@ let san move =
 ;;
 
 let diagram ~color moves =
-  let en_passant_victim move =
-    Square.create ~rank:(Square.rank (from move)) ~file:(Square.file (to_ move))
-  in
   let symbol square =
     let is_to move = Square.equal (to_ move) square in
     let is_victim move =
-      equal_kind (kind move) En_passant && Square.equal (en_passant_victim move) square
+      equal_kind (kind move) En_passant && Square.equal (captured_square move) square
     in
     match List.find moves ~f:(fun move -> Square.equal (from move) square) with
     | Some move -> Piece.to_char #{ color; kind = moved move }

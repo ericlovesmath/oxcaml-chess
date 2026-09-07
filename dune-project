@@ -25,7 +25,7 @@
   ppx_jane
   core
   unboxed
+  expectable
   (expect_test_helpers_core :with-test)
-  (expectable :with-test)
   (core_unix :with-dev-setup)
   (core_bench :with-dev-setup)))

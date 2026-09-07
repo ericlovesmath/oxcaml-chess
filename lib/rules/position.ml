@@ -129,15 +129,11 @@ let make_move (t @ local) move =
   let from = Move.from move in
   let to_ = Move.to_ move in
   let moved = Move.moved move in
-  let captured_square =
-    match Move.kind move with
-    | En_passant -> Square.create ~rank:(Square.rank from) ~file:(Square.file to_)
-    | Normal | Double_push | Castle -> to_
-  in
   let board =
     match Move.captured move with
     | Null -> t.board
-    | This kind -> Board.toggle_piece t.board #{ color = them; kind } captured_square
+    | This kind ->
+      Board.toggle_piece t.board #{ color = them; kind } (Move.captured_square move)
   in
   let board =
     match Move.promotion move with
@@ -150,13 +146,7 @@ let make_move (t @ local) move =
   let board =
     match Move.kind move with
     | Castle ->
-      (* The rook's origin and destination for a castle *)
-      let #(rook_from, rook_to) =
-        let rank = Square.rank to_ in
-        if Square.file to_ = 6
-        then #(Square.create ~rank ~file:7, Square.create ~rank ~file:5)
-        else #(Square.create ~rank ~file:0, Square.create ~rank ~file:3)
-      in
+      let #(rook_from, rook_to) = Move.castle_rook move in
       Board.move_piece board #{ color = us; kind = Rook } ~from:rook_from ~to_:rook_to
     | Normal | Double_push | En_passant -> board
   in

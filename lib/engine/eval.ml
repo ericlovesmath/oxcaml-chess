@@ -111,32 +111,93 @@ let table_index (color : Piece.Color.t) (square : Square.t) =
   | Black -> (square :> int)
 ;;
 
-let rec sum_squares table ~color squares acc =
+let value_to_owner (piece : Piece.t) square =
+  let table = Iarray.unsafe_get tables (Piece.Kind.to_index piece.#kind) in
+  Iarray.unsafe_get table (table_index piece.#color square)
+;;
+
+let rec sum_squares piece squares acc =
   if B.is_empty squares
   then acc
   else (
-    let entry = Iarray.unsafe_get table (table_index color (B.lowest_square squares)) in
-    sum_squares table ~color (B.remove_lowest squares) (acc + entry))
+    let square = B.lowest_square squares in
+    sum_squares piece (B.remove_lowest squares) (acc + value_to_owner piece square))
 ;;
 
-(* NOTE: [List.sum (module Int)] would be nice but [~f] captures [board] and [color], so
-   we do this manual unrolling... perhaps there is a better way... *)
+(* NOTE: not [List.fold], whose [~f] would capture [board] and [color]. That closure is a
+   heap allocation, and [score] is [zero_alloc strict]. *)
 let rec sum_kinds board color kinds acc =
   match kinds with
   | [] -> acc
   | kind :: rest ->
-    let table = Iarray.unsafe_get tables (Piece.Kind.to_index kind) in
-    let squares = Board.piece_board board #{ color; kind } in
-    sum_kinds board color rest (acc + sum_squares table ~color squares 0)
+    let piece : Piece.t = #{ color; kind } in
+    sum_kinds board color rest (acc + sum_squares piece (Board.piece_board board piece) 0)
 ;;
 
-let evaluate_side board color = sum_kinds board color Piece.Kind.all 0
+let sum_pieces board color = sum_kinds board color Piece.Kind.all 0
 
-let evaluate (position @ local) =
+let score (position @ local) =
   let board = Position.board position in
-  let white = evaluate_side board White in
-  let black = evaluate_side board Black in
-  match Position.to_move position with
-  | White -> white - black
-  | Black -> black - white
+  let us = Position.to_move position in
+  sum_pieces board us - sum_pieces board (Piece.Color.flip us)
+;;
+
+let delta (position @ local) move =
+  let color = Position.to_move position in
+  let moved = Move.moved move in
+  let arrived = Or_null.value (Move.promotion move) ~default:moved in
+  let taken =
+    match Move.captured move with
+    | Null -> 0
+    | This kind ->
+      value_to_owner #{ color = Piece.Color.flip color; kind } (Move.captured_square move)
+  in
+  let[@inline] ours kind square = value_to_owner #{ color; kind } square in
+  let rook =
+    match Move.kind move with
+    | Castle ->
+      let #(rook_from, rook_to) = Move.castle_rook move in
+      ours Rook rook_to - ours Rook rook_from
+    | Normal | Double_push | En_passant -> 0
+  in
+  ours arrived (Move.to_ move) - ours moved (Move.from move) + taken + rook
+;;
+
+let%expect_test "delta vs score check" =
+  let row (kind, fen, uci) =
+    let position = Fen.to_position_exn fen in
+    match Movegen.find position uci with
+    | Null -> failwithf "%s is not legal in %s" uci fen ()
+    | This move ->
+      let before = score position in
+      let delta = delta position move in
+      [%sexp
+        { kind : string
+        ; move = (Move.san move : string)
+        ; before : int
+        ; delta : int
+        ; after = (-(before + delta) : int)
+        }]
+  in
+  Test_positions.
+    [ "quiet", startpos, "g1f3"
+    ; "double push", startpos, "e2e4"
+    ; "capture", kiwipete, "e2a6"
+    ; "castle kingside", kiwipete, "e1g1"
+    ; "castle queenside", kiwipete, "e1c1"
+    ]
+  |> List.map ~f:row
+  |> Expectable.print;
+  [%expect
+    {|
+    ┌──────────────────┬───────┬────────┬───────┬───────┐
+    │ kind             │ move  │ before │ delta │ after │
+    ├──────────────────┼───────┼────────┼───────┼───────┤
+    │ quiet            │ Nf3   │   0    │  50   │  -50  │
+    │ double push      │ e4    │   0    │  40   │  -40  │
+    │ capture          │ Bxa6  │ 105    │ 310   │ -415  │
+    │ castle kingside  │ O-O   │ 105    │  30   │ -135  │
+    │ castle queenside │ O-O-O │ 105    │  15   │ -120  │
+    └──────────────────┴───────┴────────┴───────┴───────┘
+    |}]
 ;;

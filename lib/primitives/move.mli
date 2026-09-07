@@ -23,6 +23,14 @@ val kind : t -> kind [@@zero_alloc strict]
 val captured : t -> Piece.Kind.t or_null [@@zero_alloc strict]
 val promotion : t -> Piece.Kind.t or_null [@@zero_alloc strict]
 
+(** Where the captured piece is *)
+val captured_square : t -> Square.t
+[@@zero_alloc strict]
+
+(** The rook's origin and destination, ONLY use when [kind] is [Castle] *)
+val castle_rook : t -> #(Square.t * Square.t)
+[@@zero_alloc strict]
+
 (* Constructors *)
 
 val quiet : moved:Piece.Kind.t -> from:Square.t -> to_:Square.t -> t [@@zero_alloc strict]
