@@ -1,6 +1,10 @@
 (library
  (name chess_primitives)
- (libraries core ocaml_intrinsics_kernel stdlib_upstream_compatible)
+ (libraries
+  core
+  ocaml_intrinsics_kernel
+  stdlib_upstream_compatible
+  expectable)
  (preprocess
   (pps ppx_jane))
  (inline_tests

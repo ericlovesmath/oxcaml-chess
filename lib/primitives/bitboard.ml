@@ -170,21 +170,26 @@ let%expect_test "file_mask check" =
 
 let%expect_test "each direction steps exactly one square" =
   let d4 = of_square (Square.of_string_exn "d4") in
-  List.iter Direction.all ~f:(fun direction ->
-    printf
-      "shift d4 %-10s = %s\n"
-      (Direction.to_string direction)
-      (Square.to_string (lowest_square (shift d4 direction))));
+  List.map Direction.all ~f:(fun direction ->
+    [%sexp
+      { direction = (Direction.to_string direction : string)
+      ; steps_to = (Square.to_string (lowest_square (shift d4 direction)) : string)
+      }])
+  |> Expectable.print;
   [%expect
     {|
-    shift d4 North      = d5
-    shift d4 South      = d3
-    shift d4 East       = e4
-    shift d4 West       = c4
-    shift d4 North_east = e5
-    shift d4 North_west = c5
-    shift d4 South_east = e3
-    shift d4 South_west = c3
+    ┌────────────┬──────────┐
+    │ direction  │ steps_to │
+    ├────────────┼──────────┤
+    │ North      │ d5       │
+    │ South      │ d3       │
+    │ East       │ e4       │
+    │ West       │ c4       │
+    │ North_east │ e5       │
+    │ North_west │ c5       │
+    │ South_east │ e3       │
+    │ South_west │ c3       │
+    └────────────┴──────────┘
     |}]
 ;;
 
@@ -307,20 +312,25 @@ let%expect_test "delta is the step that shift takes" =
       is_empty stepped
       || (lowest_square stepped :> int) = (square :> int) + Direction.delta direction
     in
-    (if List.for_all Square.all ~f:agrees then "PASS" else "FAIL")
-    ^ " "
-    ^ Direction.to_string direction
+    [%sexp
+      { direction = (Direction.to_string direction : string)
+      ; agrees = (List.for_all Square.all ~f:agrees : bool)
+      }]
   in
-  List.map Direction.all ~f:checked |> String.concat_lines |> print_string;
+  List.map Direction.all ~f:checked |> Expectable.print;
   [%expect
     {|
-    PASS North
-    PASS South
-    PASS East
-    PASS West
-    PASS North_east
-    PASS North_west
-    PASS South_east
-    PASS South_west
+    ┌────────────┬────────┐
+    │ direction  │ agrees │
+    ├────────────┼────────┤
+    │ North      │ true   │
+    │ South      │ true   │
+    │ East       │ true   │
+    │ West       │ true   │
+    │ North_east │ true   │
+    │ North_west │ true   │
+    │ South_east │ true   │
+    │ South_west │ true   │
+    └────────────┴────────┘
     |}]
 ;;

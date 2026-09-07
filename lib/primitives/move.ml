@@ -195,27 +195,33 @@ let diagram ~color moves =
 let sq = Square.of_string_exn
 
 let%expect_test "every constructor tested" =
-  let case name move = printf "%-16s %-8s %s\n" name (san move) (to_string move) in
-  case "quiet" (quiet ~moved:Knight ~from:(sq "g1") ~to_:(sq "f3"));
-  case "capture" (capture ~moved:Knight ~captured:Pawn ~from:(sq "g1") ~to_:(sq "f3"));
-  case "double_push" (double_push ~from:(sq "e2"));
-  case "en_passant" (en_passant ~from:(sq "e5") ~to_:(sq "d6"));
-  case "castle kingside" (castle ~color:White ~side:Kingside);
-  case "castle queenside" (castle ~color:White ~side:Queenside);
-  case "promote" (promote ~to_kind:Queen ~captured:Null ~from:(sq "a7") ~to_:(sq "a8"));
-  case
-    "promote capture"
-    (promote ~to_kind:Queen ~captured:(This Rook) ~from:(sq "a7") ~to_:(sq "b8"));
+  [ "quiet", quiet ~moved:Knight ~from:(sq "g1") ~to_:(sq "f3")
+  ; "capture", capture ~moved:Knight ~captured:Pawn ~from:(sq "g1") ~to_:(sq "f3")
+  ; "double_push", double_push ~from:(sq "e2")
+  ; "en_passant", en_passant ~from:(sq "e5") ~to_:(sq "d6")
+  ; "castle kingside", castle ~color:White ~side:Kingside
+  ; "castle queenside", castle ~color:White ~side:Queenside
+  ; "promote", promote ~to_kind:Queen ~captured:Null ~from:(sq "a7") ~to_:(sq "a8")
+  ; ( "promote capture"
+    , promote ~to_kind:Queen ~captured:(This Rook) ~from:(sq "a7") ~to_:(sq "b8") )
+  ]
+  |> List.map ~f:(fun (kind, move) ->
+    [%sexp { kind : string; san = (san move : string); uci = (to_string move : string) }])
+  |> Expectable.print;
   [%expect
     {|
-    quiet            Nf3      g1f3
-    capture          Nxf3     g1f3
-    double_push      e4       e2e4
-    en_passant       exd6     e5d6
-    castle kingside  O-O      e1g1
-    castle queenside O-O-O    e1c1
-    promote          a8=Q     a7a8q
-    promote capture  axb8=Q   a7b8q
+    ┌──────────────────┬────────┬───────┐
+    │ kind             │ san    │ uci   │
+    ├──────────────────┼────────┼───────┤
+    │ quiet            │ Nf3    │ g1f3  │
+    │ capture          │ Nxf3   │ g1f3  │
+    │ double_push      │ e4     │ e2e4  │
+    │ en_passant       │ exd6   │ e5d6  │
+    │ castle kingside  │ O-O    │ e1g1  │
+    │ castle queenside │ O-O-O  │ e1c1  │
+    │ promote          │ a8=Q   │ a7a8q │
+    │ promote capture  │ axb8=Q │ a7b8q │
+    └──────────────────┴────────┴───────┘
     |}]
 ;;
 

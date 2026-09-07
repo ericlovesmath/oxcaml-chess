@@ -171,19 +171,27 @@ let%expect_test "FEN and board" =
 ;;
 
 let%expect_test "round trip tests" =
-  List.iter [ startpos; kiwipete; endgame; "8/8/8/8/8/8/8/8" ] ~f:(fun fen ->
-    printf "%b %s\n" (String.equal fen (of_board (to_board_exn fen))) fen);
+  List.map [ startpos; kiwipete; endgame; "8/8/8/8/8/8/8/8" ] ~f:(fun fen ->
+    [%sexp
+      { fen : string
+      ; round_trips = (String.equal fen (of_board (to_board_exn fen)) : bool)
+      }])
+  |> Expectable.print;
   [%expect
     {|
-    true rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
-    true r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R
-    true 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8
-    true 8/8/8/8/8/8/8/8
-  |}]
+    ┌─────────────────────────────────────────────────────────┬─────────────┐
+    │ fen                                                     │ round_trips │
+    ├─────────────────────────────────────────────────────────┼─────────────┤
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR             │ true        │
+    │ r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R │ true        │
+    │ 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8                         │ true        │
+    │ 8/8/8/8/8/8/8/8                                         │ true        │
+    └─────────────────────────────────────────────────────────┴─────────────┘
+    |}]
 ;;
 
 let%expect_test "malformed FEN tests" =
-  List.iter
+  List.map
     [ "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP"
     ; "8/8/8/8/8/8/8/8/8"
     ; "rnbqkbnr/ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
@@ -193,17 +201,25 @@ let%expect_test "malformed FEN tests" =
     ; ""
     ]
     ~f:(fun fen ->
-      try printf "accepted %s\n" (of_board (to_board_exn fen)) with
-      | Failure msg -> print_endline msg);
+      let result =
+        try "accepted " ^ of_board (to_board_exn fen) with
+        | Failure msg -> msg
+      in
+      [%sexp { fen : string; result : string }])
+  |> Expectable.print;
   [%expect
     {|
-    Fen: expected eight ranks, got 7
-    Fen: expected eight ranks, got 9
-    Fen: rank 7 has 7 files
-    Fen: rank 8 has 9 files
-    Fen: a run of empty squares cannot be 0
-    Fen: 'X' is not a piece letter
-    Fen: expected eight ranks, got 1
+    ┌──────────────────────────────────────────────┬─────────────────────────────────────────┐
+    │ fen                                          │ result                                  │
+    ├──────────────────────────────────────────────┼─────────────────────────────────────────┤
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP           │ Fen: expected eight ranks, got 7        │
+    │ 8/8/8/8/8/8/8/8/8                            │ Fen: expected eight ranks, got 9        │
+    │ rnbqkbnr/ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   │ Fen: rank 7 has 7 files                 │
+    │ rnbqkbnrb/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR │ Fen: rank 8 has 9 files                 │
+    │ rnbqkbnr/pppppppp/08/8/8/8/PPPPPPPP/RNBQKBNR │ Fen: a run of empty squares cannot be 0 │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX  │ Fen: 'X' is not a piece letter          │
+    │                                              │ Fen: expected eight ranks, got 1        │
+    └──────────────────────────────────────────────┴─────────────────────────────────────────┘
     |}]
 ;;
 
@@ -220,7 +236,7 @@ let%expect_test "FEN of starting position" =
 ;;
 
 let%expect_test "invalid records" =
-  List.iter
+  List.map
     [ startpos ^ " w KQkq - 0"
     ; startpos ^ " w KQkq - 0 1 x"
     ; startpos ^ " x KQkq - 0 1"
@@ -233,20 +249,28 @@ let%expect_test "invalid records" =
     ; "4k3/8/8/4R3/8/8/8/4K3 w - - 0 1"
     ]
     ~f:(fun fen ->
-      match to_position fen with
-      | Ok position -> printf "ACCEPTED %s\n" (of_position position)
-      | Error message -> print_endline message);
+      let result =
+        match to_position fen with
+        | Ok _ -> "Accepted"
+        | Error msg -> msg
+      in
+      [%sexp { fen : string; result : string }])
+  |> Expectable.print;
   [%expect
     {|
-    Fen: expected six fields, got 5
-    Fen: expected six fields, got 7
-    Piece.Color: invalid color x
-    Fen: bad castling rights "KQkqx"
-    Fen: bad en passant square "e9"
-    Fen: bad halfmove clock "x"
-    Fen: bad fullmove number "x"
-    Fen: expected eight ranks, got 7
-    Position: castling right K needs R on h1
-    Position: the side that just moved left its king in check
+    ┌────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────┐
+    │ fen                                                        │ result                                                    │
+    ├────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0     │ Fen: expected six fields, got 5                           │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 x │ Fen: expected six fields, got 7                           │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR x KQkq - 0 1   │ Piece.Color: invalid color x                              │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkqx - 0 1  │ Fen: bad castling rights "KQkqx"                          │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e9 0 1  │ Fen: bad en passant square "e9"                           │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - x 1   │ Fen: bad halfmove clock "x"                               │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 x   │ Fen: bad fullmove number "x"                              │
+    │ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP w KQkq - 0 1            │ Fen: expected eight ranks, got 7                          │
+    │ 4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1                           │ Position: castling right K needs R on h1                  │
+    │ 4k3/8/8/4R3/8/8/8/4K3 w - - 0 1                            │ Position: the side that just moved left its king in check │
+    └────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────┘
     |}]
 ;;

@@ -18,28 +18,46 @@ let of_string_exn s =
 ;;
 
 let%expect_test "testing of_string" =
-  List.iter [ "a1"; "h1"; "a8"; "h8"; "e4"; "d5" ] ~f:(fun s ->
-    let sq = of_string_exn s in
-    printf "%s = rank %d, file %d, square %d\n" s (rank sq) (file sq) (sq :> int));
+  [ "a1"; "h1"; "a8"; "h8"; "e4"; "d5" ]
+  |> List.map ~f:(fun square ->
+    let sq = of_string_exn square in
+    [%sexp
+      { square : string
+      ; rank = (rank sq : int)
+      ; file = (file sq : int)
+      ; index = ((sq :> int) : int)
+      }])
+  |> Expectable.print;
   [%expect
     {|
-    a1 = rank 0, file 0, square 0
-    h1 = rank 0, file 7, square 7
-    a8 = rank 7, file 0, square 56
-    h8 = rank 7, file 7, square 63
-    e4 = rank 3, file 4, square 28
-    d5 = rank 4, file 3, square 35
+    ┌────────┬──────┬──────┬───────┐
+    │ square │ rank │ file │ index │
+    ├────────┼──────┼──────┼───────┤
+    │ a1     │ 0    │ 0    │  0    │
+    │ h1     │ 0    │ 7    │  7    │
+    │ a8     │ 7    │ 0    │ 56    │
+    │ h8     │ 7    │ 7    │ 63    │
+    │ e4     │ 3    │ 4    │ 28    │
+    │ d5     │ 4    │ 3    │ 35    │
+    └────────┴──────┴──────┴───────┘
     |}];
-  List.iter [ "i1"; "a9"; "a0"; "e"; ""; "e44"; "4e" ] ~f:(fun s ->
-    printf "%s is %s\n" s (if Option.is_none (of_string s) then "invalid" else "Some"));
+  [ "i1"; "a9"; "a0"; "e"; ""; "e44"; "4e" ]
+  |> List.map ~f:(fun input ->
+    let valid = Option.is_some (of_string input) in
+    [%sexp { input : string; valid : bool }])
+  |> Expectable.print;
   [%expect
     {|
-    i1 is invalid
-    a9 is invalid
-    a0 is invalid
-    e is invalid
-     is invalid
-    e44 is invalid
-    4e is invalid
+    ┌───────┬───────┐
+    │ input │ valid │
+    ├───────┼───────┤
+    │ i1    │ false │
+    │ a9    │ false │
+    │ a0    │ false │
+    │ e     │ false │
+    │       │ false │
+    │ e44   │ false │
+    │ 4e    │ false │
+    └───────┴───────┘
     |}]
 ;;

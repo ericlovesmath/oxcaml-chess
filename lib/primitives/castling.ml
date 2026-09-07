@@ -63,9 +63,23 @@ let of_string s =
 ;;
 
 let%expect_test "check all bits" =
-  List.iter all_rights ~f:(fun (color, side) ->
-    printf "%c=%d " (to_char color side) (bit color side));
-  [%expect {| K=1 Q=2 k=4 q=8 |}]
+  List.map all_rights ~f:(fun (color, side) ->
+    [%sexp
+      { right = (String.of_char (to_char color side) : string)
+      ; bit = (bit color side : int)
+      }])
+  |> Expectable.print;
+  [%expect
+    {|
+    ┌───────┬─────┐
+    │ right │ bit │
+    ├───────┼─────┤
+    │ K     │ 1   │
+    │ Q     │ 2   │
+    │ k     │ 4   │
+    │ q     │ 8   │
+    └───────┴─────┘
+    |}]
 ;;
 
 let%expect_test "remove and remove_color" =
@@ -80,18 +94,24 @@ let%expect_test "remove and remove_color" =
 ;;
 
 let%expect_test "round trip tests and failure tests" =
-  List.iter [ "KQkq"; "Kq"; "-"; "q"; "qk"; "KQkqx"; "X"; ""; "KK" ] ~f:(fun s ->
-    printf "%S = %s\n" s (if Option.is_some (of_string s) then "valid" else "invalid"));
+  [ "KQkq"; "Kq"; "-"; "q"; "qk"; "KQkqx"; "X"; ""; "KK" ]
+  |> List.map ~f:(fun input ->
+    [%sexp { input : string; valid = (Option.is_some (of_string input) : bool) }])
+  |> Expectable.print;
   [%expect
     {|
-    "KQkq" = valid
-    "Kq" = valid
-    "-" = valid
-    "q" = valid
-    "qk" = invalid
-    "KQkqx" = invalid
-    "X" = invalid
-    "" = invalid
-    "KK" = invalid
+    ┌───────┬───────┐
+    │ input │ valid │
+    ├───────┼───────┤
+    │ KQkq  │ true  │
+    │ Kq    │ true  │
+    │ -     │ true  │
+    │ q     │ true  │
+    │ qk    │ false │
+    │ KQkqx │ false │
+    │ X     │ false │
+    │       │ false │
+    │ KK    │ false │
+    └───────┴───────┘
     |}]
 ;;

@@ -1,6 +1,6 @@
 (library
  (name chess_rules)
- (libraries chess_primitives core unboxed.int64_u)
+ (libraries chess_primitives core unboxed.int64_u expectable)
  (preprocess
   (pps ppx_jane ppx_with))
  (inline_tests

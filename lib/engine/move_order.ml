@@ -40,16 +40,22 @@ let%expect_test "move order basic test" =
   in
   moves
   |> List.sort ~compare:(fun a b -> Int.descending (score a) (score b))
-  |> List.iter ~f:(fun move -> printf "%s (%d)\n" (Move.san move) (score move));
+  |> List.map ~f:(fun move ->
+    [%sexp { move = (Move.san move : string); score = (score move : int) }])
+  |> Expectable.print;
   [%expect
     {|
-    exd5 (899)
-    Rxd8 (896)
-    a8=Q (800)
-    Kxe2 (100)
-    exd6 (99)
-    Qxd7 (95)
-    Nf3 (0)
-    O-O (0)
+    ┌──────┬───────┐
+    │ move │ score │
+    ├──────┼───────┤
+    │ exd5 │ 899   │
+    │ Rxd8 │ 896   │
+    │ a8=Q │ 800   │
+    │ Kxe2 │ 100   │
+    │ exd6 │  99   │
+    │ Qxd7 │  95   │
+    │ Nf3  │   0   │
+    │ O-O  │   0   │
+    └──────┴───────┘
     |}]
 ;;

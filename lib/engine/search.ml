@@ -88,23 +88,32 @@ let search (position @ local) ~depth =
 ;;
 
 let%expect_test "trivial search tests" =
-  let test fen =
-    match (search (Fen.to_position_exn fen) ~depth:4).#move with
-    | Null -> print_endline "none"
-    | This move -> print_endline (Move.san move)
+  let test (case, fen) =
+    let move =
+      Fen.to_position_exn fen
+      |> search ~depth:4
+      |> (fun x -> x.#move)
+      |> Or_null.value_map ~default:"none" ~f:Move.san
+    in
+    [%sexp { case : string; fen : string; move : string }]
   in
-  (* Mate in 1 *)
-  test "6k1/5ppp/8/8/8/8/8/R3K3 w Q - 0 1";
-  (* Hanging Queen *)
-  test "4k3/8/8/3q4/4B3/8/8/4K3 w - - 0 1";
-  (* stalemate *)
-  test "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1";
-  (* checkmate *)
-  test "R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1";
-  [%expect {|
-    Ra8
-    Bxd5
-    none
-    none
+  List.map
+    ~f:test
+    [ "mate in 1", "6k1/5ppp/8/8/8/8/8/R3K3 w Q - 0 1"
+    ; "hanging queen", "4k3/8/8/3q4/4B3/8/8/4K3 w - - 0 1"
+    ; "stalemate", "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"
+    ; "checkmate", "R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1"
+    ]
+  |> Expectable.print;
+  [%expect
+    {|
+    ┌───────────────┬───────────────────────────────────┬──────┐
+    │ case          │ fen                               │ move │
+    ├───────────────┼───────────────────────────────────┼──────┤
+    │ mate in 1     │ 6k1/5ppp/8/8/8/8/8/R3K3 w Q - 0 1 │ Ra8  │
+    │ hanging queen │ 4k3/8/8/3q4/4B3/8/8/4K3 w - - 0 1 │ Bxd5 │
+    │ stalemate     │ 7k/5Q2/6K1/8/8/8/8/8 b - - 0 1    │ none │
+    │ checkmate     │ R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1 │ none │
+    └───────────────┴───────────────────────────────────┴──────┘
     |}]
 ;;

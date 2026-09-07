@@ -237,37 +237,47 @@ let%expect_test "invariant rejects illegal states" =
     ?(full = 1)
     ()
     =
-    match
-      create_exn
-        ~board
-        ~to_move:White
-        ~castling
-        ~en_passant:ep
-        ~halfmove_clock:half
-        ~fullmove_number:full
-    with
-    | (_ : t) -> printf "%-22s accepted\n" name
-    | exception Failure message -> printf "%-22s %s\n" name message
+    let result =
+      try
+        ignore
+          (create_exn
+             ~board
+             ~to_move:White
+             ~castling
+             ~en_passant:ep
+             ~halfmove_clock:half
+             ~fullmove_number:full);
+        "Accepted"
+      with
+      | Failure msg -> msg
+    in
+    [%sexp { case = (name : string); result : string }]
   in
   let sq s = This (Square.of_string_exn s) in
   let base = bare_kings in
-  attempt "legal" ~board:base ();
-  attempt "negative clock" ~board:base ~half:(-1) ();
-  attempt "fullmove 0" ~board:base ~full:0 ();
-  attempt "ep on wrong rank" ~board:base ~ep:(sq "e3") ();
-  attempt "ep with no pawn" ~board:base ~ep:(sq "e6") ();
-  attempt "castling with no rook" ~board:base ~castling:Castling.all ();
-  attempt "two white kings" ~board:(put base White King "d1") ();
-  attempt "pawn on rank 8" ~board:(put base White Pawn "a8") ();
+  [ attempt "legal" ~board:base ()
+  ; attempt "negative clock" ~board:base ~half:(-1) ()
+  ; attempt "fullmove 0" ~board:base ~full:0 ()
+  ; attempt "ep on wrong rank" ~board:base ~ep:(sq "e3") ()
+  ; attempt "ep with no pawn" ~board:base ~ep:(sq "e6") ()
+  ; attempt "castling with no rook" ~board:base ~castling:Castling.all ()
+  ; attempt "two white kings" ~board:(put base White King "d1") ()
+  ; attempt "pawn on rank 8" ~board:(put base White Pawn "a8") ()
+  ]
+  |> Expectable.print;
   [%expect
     {|
-    legal                  accepted
-    negative clock         Position: halfmove clock is negative
-    fullmove 0             Position: fullmove number is below 1
-    ep on wrong rank       Position: en passant square e3 is on the wrong rank
-    ep with no pawn        Position: no pawn on e5 to be captured en passant
-    castling with no rook  Position: castling right K needs R on h1
-    two white kings        Position: K has 2 kings
-    pawn on rank 8         Position: a pawn is on rank 1 or rank 8
+    ┌───────────────────────┬─────────────────────────────────────────────────────┐
+    │ case                  │ result                                              │
+    ├───────────────────────┼─────────────────────────────────────────────────────┤
+    │ legal                 │ Accepted                                            │
+    │ negative clock        │ Position: halfmove clock is negative                │
+    │ fullmove 0            │ Position: fullmove number is below 1                │
+    │ ep on wrong rank      │ Position: en passant square e3 is on the wrong rank │
+    │ ep with no pawn       │ Position: no pawn on e5 to be captured en passant   │
+    │ castling with no rook │ Position: castling right K needs R on h1            │
+    │ two white kings       │ Position: K has 2 kings                             │
+    │ pawn on rank 8        │ Position: a pawn is on rank 1 or rank 8             │
+    └───────────────────────┴─────────────────────────────────────────────────────┘
     |}]
 ;;
